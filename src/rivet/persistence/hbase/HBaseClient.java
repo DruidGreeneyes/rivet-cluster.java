@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -20,10 +21,7 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
-
-import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.hadoop.hbase.mapreduce.TableInputFormat;
 
 import rivet.Util;
 import rivet.persistence.HBase;
@@ -33,16 +31,15 @@ import rivet.persistence.hbase.Put;
 
 public class HBaseClient implements Closeable {
 	//Vars
-	private SparkConf sparkConf;
-	private JavaSparkContext jsc;
 	private Connection conn;
 	private Admin admin;
 	private Table table;
 	
 	//Constructors	
 	public HBaseClient (String tableName) throws IOException {
-		this.conn = ConnectionFactory.createConnection(
-				HBaseConfiguration.create());
+		Configuration conf = HBaseConfiguration.create();
+		conf.set(TableInputFormat.INPUT_TABLE, tableName);
+		this.conn = ConnectionFactory.createConnection(conf);
 		this.admin = this.conn.getAdmin();
 		Optional<Table> t = this.getTable(tableName);
 		if (!t.isPresent()) 

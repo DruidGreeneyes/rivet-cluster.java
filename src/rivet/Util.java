@@ -154,38 +154,4 @@ public final class Util {
 	    res.put(keyfn.apply(item), item);
 		return takeBy(num, keyfn, lis.listIterator(), res);
 	}
-	
-	public static <A> void tryVoid(Cn <A> f, A arg) {
-		try {
-			f.accept(arg);
-		} catch (Exception e) {
-			System.out.println(e.getMessage());
-		}
-	}
-	public static void tryVoid(Su <?> f) { 
-		try {
-			f.get(null);
-		} catch (Exception e) {
-			System.out.println(e.getMessage());
-		}
-	}
-	
-	public static <A, R> Optional<R> tryOpt(Fn<A, R> f, A arg) {
-		try {
-			return Optional.of(f.apply(arg));
-		} catch (Exception e) {
-			System.out.println(e.getMessage());
-			return Optional.empty();
-		}
-	}
-	public static <A, B, R> Optional<R> tryOpt(BiFn<A, B, R> f, A arg0, B arg1) {
-		return tryOpt(
-				((x) -> f.apply(arg0, x)),
-				arg1);
-	}
-	
-	public static <T> T valOrExit (Optional<T> o) {
-		if (!o.isPresent()) System.exit(1);
-		return o.get();
-	}
 }
