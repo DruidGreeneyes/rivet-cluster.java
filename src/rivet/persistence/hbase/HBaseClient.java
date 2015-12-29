@@ -4,6 +4,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -47,6 +48,16 @@ public class HBaseClient implements Closeable {
 		this.table = t.get();
 	}
 	
+	public HBaseClient (Configuration conf) throws IOException {
+		this.conn = ConnectionFactory.createConnection(conf);
+		this.admin = this.conn.getAdmin();
+		String tableName = conf.get(TableInputFormat.INPUT_TABLE);
+		Optional<Table> t = this.getTable(tableName);
+		if (!t.isPresent()) 
+			throw new IOException("Table does not exist: " + tableName);
+		this.table = t.get();
+	}
+	
 	
 	//Methods
 	public void close () throws IOException {
@@ -73,6 +84,12 @@ public class HBaseClient implements Closeable {
 	
 	public void put (Map<String, String> row) throws IOException {
 		this.table.put(new Put(row));
+	}
+	
+	public void setWord (String word, String riv) throws IOException {
+		Map<String, String> res = new HashMap<>();
+		res.put(word, riv);
+		this.put(res);
 	}
 	
 	public Table makeTable (String tableName, String[] columns) throws IOException {

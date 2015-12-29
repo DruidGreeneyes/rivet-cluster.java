@@ -2,13 +2,14 @@ package rivet.cluster.spark;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.client.Admin;
-import org.apache.hadoop.hbase.client.Connection;
-import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.TableInputFormat;
@@ -17,19 +18,20 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 
+import rivet.Util;
 import rivet.cluster.Spark;
 import rivet.core.HashLabels;
 import rivet.core.RIV;
 import rivet.persistence.HBase;
+import rivet.persistence.hbase.HBaseClient;
+
+import scala.Tuple2;
 
 
 public class SparkClient implements Closeable {
 	private SparkConf sparkConf;
 	private JavaSparkContext jsc;
 	private Configuration conf;
-	private Connection conn;
-	private Admin admin;
-	private TableName tn;
 	private JavaPairRDD<ImmutableBytesWritable, Result> rdd;
 	
 	private static byte[] DATA = HBase.stringToBytes("data");
@@ -47,9 +49,6 @@ public class SparkClient implements Closeable {
 		this.jsc = new JavaSparkContext(sparkConf);
 		this.conf = HBaseConfiguration.create();
 		this.conf.set(TableInputFormat.INPUT_TABLE, tableName);
-		this.conn = ConnectionFactory.createConnection(this.conf);
-		this.admin = this.conn.getAdmin();
-		this.tn = TableName.valueOf(tableName);
 		this.rdd = jsc.newAPIHadoopRDD(
 						conf,
 						TableInputFormat.class,
@@ -106,20 +105,39 @@ public class SparkClient implements Closeable {
 			return this.getWordInd(word);
 		}
 	}
-	
-/*
-	public RIV setWordLex (String word, RIV lex) {
-		Result w = this.getDataPoint(Spark.stringToIBW(word));
-		rdd.
+
+	public RIV hbcSetWordLex (String word, RIV lex) throws IOException {
+		try (HBaseClient hbc = new HBaseClient(this.conf)) {
+			hbc.setWord(word, lex.toString());
+		}
+		return this.getWordLex(word);
 	}
-*/
+	
+	public RIV rddSetWordLex (String word, RIV lex) {
+		ImmutableBytesWritable wordBytes = Spark.stringToIBW(word);
+		Result oldRow = this.getDataPoint(wordBytes);
+		Cell oldCell = oldRow.getColumnLatestCell(DATA, LEX);
+		List<Cell> newCells = Util.safeCopy(oldRow.listCells());
+		newCells.add(CellUtil.createCell(
+				oldCell.getRowArray(),
+				oldCell.getFamilyArray(),
+				oldCell.getQualifierArray(),
+				System.currentTimeMillis(),
+				KeyValue.Type.Maximum.getCode(),
+				HBase.stringToBytes(lex.toString())));
+		List<Tuple2<ImmutableBytesWritable, Result>> newRow = new ArrayList<>();
+		newRow.add(new Tuple2<ImmutableBytesWritable, Result>(
+				wordBytes, Result.create(newCells)));
+		JavaPairRDD<ImmutableBytesWritable, Result> resRDD = jsc.parallelizePairs(newRow);
+		this.rdd = rdd.union(resRDD).distinct();		
+		return this.getWordLex(word);
+	}
+
 
 	@Override
 	public void close() throws IOException {
-		admin.flush(tn);
-		admin.close();
-		conn.close();
-		jsc.stop();
-		jsc.close();
+		this.rdd.saveAsNewAPIHadoopDataset(this.conf);
+		this.jsc.stop();
+		this.jsc.close();
 	}
 }

@@ -18,5 +18,4 @@ public class RIV extends HashMap<Integer, Integer> {
 									Integer.parseInt(entry[1])));
 		return ret;		
 	}
-	
 }
