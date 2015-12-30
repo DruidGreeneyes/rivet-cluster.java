@@ -3,7 +3,9 @@ package rivet.cluster.spark;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
@@ -13,10 +15,11 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.TableInputFormat;
-
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.function.FlatMapFunction;
 
 import rivet.Util;
 import rivet.cluster.Spark;
@@ -29,6 +32,10 @@ import scala.Tuple2;
 
 
 public class SparkClient implements Closeable {
+	private final int size = 16000;
+	private final int k = 48;
+	private final int cr = 3;
+	
 	private SparkConf sparkConf;
 	private JavaSparkContext jsc;
 	private Configuration conf;
@@ -37,13 +44,14 @@ public class SparkClient implements Closeable {
 	private static byte[] DATA = HBase.stringToBytes("data");
 	private static byte[] LEX = HBase.stringToBytes("lex");
 	
-	private static ImmutableBytesWritable IMETA = Spark.stringToIBW("(:meta");
-	
-	private static byte[] META = HBase.stringToBytes("(:meta");
+	private static ImmutableBytesWritable META = Spark.stringToIBW("metadata");
+
 	private static byte[] SIZE = HBase.stringToBytes("size");
 	private static byte[] K = HBase.stringToBytes("k");
 	private static byte[] CR = HBase.stringToBytes("cr");
 	
+	
+	//Class necessities
 	public SparkClient (String tableName) throws IOException {
 		this.sparkConf = new SparkConf().setAppName("Rivet");
 		this.jsc = new JavaSparkContext(sparkConf);
@@ -56,16 +64,80 @@ public class SparkClient implements Closeable {
 						Result.class);
 	}
 	
-	public int getMetadata(byte[] item) {
-		return HBase.bytesToInt(
-				Spark.firstOrError(
-						this.rdd.lookup(IMETA))
-					.getColumnLatestCell(META, item)
-					.getValueArray());
+	@Override
+	public void close() throws IOException {
+		this.rdd.saveAsNewAPIHadoopDataset(this.conf);
+		this.jsc.stop();
+		this.jsc.close();
 	}
-	public int getSize () {	return this.getMetadata(SIZE); }
-	public int getK () { return this.getMetadata(K); }
-	public int getCR () { return this.getMetadata(CR); }
+	
+	
+	//low-level
+	public Optional<Result> getRow (ImmutableBytesWritable rowKey) {
+		return Spark.firstOrError(this.rdd.lookup(rowKey));
+	}
+	
+	public Optional<byte[]> getDataPoint (ImmutableBytesWritable rowKey, byte[] columnKey) {
+		return this.getRow(rowKey)
+				.map((x) -> x.getValue(DATA, columnKey));
+	}
+	
+	public Optional<Result> setRow (ImmutableBytesWritable rowKey, Result newRes) {
+		List<Tuple2<ImmutableBytesWritable, Result>> newRow = new ArrayList<>();
+		newRow.add(new Tuple2<ImmutableBytesWritable, Result>(
+				META, newRes));
+		JavaPairRDD<ImmutableBytesWritable, Result> resRDD = jsc.parallelizePairs(newRow);
+		this.rdd = rdd.union(resRDD).distinct();
+		return this.getRow(rowKey);
+	}
+	
+	public Optional<byte[]> setDataPoint (ImmutableBytesWritable rowKey, byte[] columnKey, byte[] value) {
+		Optional<Result> r = this.getRow(rowKey);
+		List<Cell> newCells = (r.isPresent())
+				? r.get().getColumnCells(DATA, columnKey)
+						: new ArrayList<>();
+		if (newCells.isEmpty()) 
+			System.out.println("Adding new Row: " + Spark.ibwToString(rowKey));
+		newCells.add(CellUtil.createCell(
+				rowKey.copyBytes(), 
+				DATA, 
+				columnKey, 
+				System.currentTimeMillis(),
+				KeyValue.Type.Maximum.getCode(),
+				value));
+		return this.setRow(rowKey, Result.create(newCells))
+				.map((x) -> x.getValue(DATA, columnKey));
+	}	
+	
+	
+	//Lexicon-specific
+	public Optional<Integer> getMetadata(byte[] item) {
+		return this.getDataPoint(META, item).map(HBase::bytesToInt);
+	}
+	
+	public Optional<Integer> setMetadata(byte[] item, int value) {
+		return this.setDataPoint(META, DATA, HBase.intToBytes(value))
+				.map(HBase::bytesToInt);
+	}
+	
+	public int getSize () {	
+		return this.getMetadata(SIZE).orElse(this.size);
+	}
+	public int getK () { 
+		return this.getMetadata(K).orElse(this.k);
+	}
+	public int getCR () { 
+		return this.getMetadata(CR).orElse(this.cr); 
+	}
+	public Optional<Integer> setSize (int size) {
+		return this.setMetadata(SIZE, size);
+	}
+	public Optional<Integer> setK (int k) {
+		return this.setMetadata(K, k);
+	}
+	public Optional<Integer> setCR (int cr) {
+		return this.setMetadata(CR, cr);
+	}
 		
 	public RIV getWordInd (String word) {
 		 return HashLabels.generateLabel(
@@ -73,71 +145,83 @@ public class SparkClient implements Closeable {
 				 this.getK(),
 				 word);
 	}
-	
-	public Result getDataPoint (ImmutableBytesWritable row) {
-		return Spark.firstOrError(this.rdd.lookup(row));
-	}
-	public byte[] getDataPoint (ImmutableBytesWritable row, byte[] column) {
-		return this.getDataPoint(row)
-				.getColumnLatestCell(DATA, column)
-				.getValueArray();
-	}
-	public byte[] getDataPoint (String row, byte[] column) {
-		return this.getDataPoint(Spark.stringToIBW(row), column);
-	}
-	public byte[] getDataPoint (ImmutableBytesWritable row, String column) {
-		return this.getDataPoint(row, HBase.stringToBytes(column));
-	}
-	public byte[] getDataPoint (String row, String column) {
-		return this.getDataPoint(row, HBase.stringToBytes(column));
-	}
-	
-	public RIV getWordLex (String word) {
-		return RIV.fromString(
-				HBase.bytesToString(
-					this.getDataPoint(word, LEX)));
+	public Optional<RIV> getWordLex (String word) {
+		return this.getDataPoint(Spark.stringToIBW(word), LEX).map(
+				(x) -> RIV.fromString(HBase.bytesToString(x)));
 	}
 	
 	public RIV getOrMakeWordLex (String word) {
-		try {
-			return this.getWordLex(word);
-		} catch (IndexOutOfBoundsException e) {
-			return this.getWordInd(word);
-		}
+		return this.getWordLex(word)
+				.orElse(this.getWordInd(word));
 	}
 
-	public RIV hbcSetWordLex (String word, RIV lex) throws IOException {
+	public Optional<RIV> hbcSetWordLex (String word, RIV lex) throws IOException {
 		try (HBaseClient hbc = new HBaseClient(this.conf)) {
 			hbc.setWord(word, lex.toString());
 		}
 		return this.getWordLex(word);
 	}
 	
-	public RIV rddSetWordLex (String word, RIV lex) {
-		ImmutableBytesWritable wordBytes = Spark.stringToIBW(word);
-		Result oldRow = this.getDataPoint(wordBytes);
-		Cell oldCell = oldRow.getColumnLatestCell(DATA, LEX);
-		List<Cell> newCells = Util.safeCopy(oldRow.listCells());
-		newCells.add(CellUtil.createCell(
-				oldCell.getRowArray(),
-				oldCell.getFamilyArray(),
-				oldCell.getQualifierArray(),
-				System.currentTimeMillis(),
-				KeyValue.Type.Maximum.getCode(),
-				HBase.stringToBytes(lex.toString())));
-		List<Tuple2<ImmutableBytesWritable, Result>> newRow = new ArrayList<>();
-		newRow.add(new Tuple2<ImmutableBytesWritable, Result>(
-				wordBytes, Result.create(newCells)));
-		JavaPairRDD<ImmutableBytesWritable, Result> resRDD = jsc.parallelizePairs(newRow);
-		this.rdd = rdd.union(resRDD).distinct();		
+	public Optional<RIV> rddSetWordLex (String word, RIV lex) {
+		this.setDataPoint(
+				Spark.stringToIBW(word),
+				LEX, 
+				HBase.stringToBytes(lex.toString()));
 		return this.getWordLex(word);
 	}
-
-
-	@Override
-	public void close() throws IOException {
-		this.rdd.saveAsNewAPIHadoopDataset(this.conf);
-		this.jsc.stop();
-		this.jsc.close();
+	
+	
+	
+	//Text Input
+	public RIV trainWordFromContext (String word, JavaRDD<String> context) {
+		return this.rddSetWordLex(
+					word,
+					context.map((x) -> this.getWordInd(x))
+						   .fold(
+								this.getOrMakeWordLex(word), 
+								HashLabels::addLabels))
+				.orElseThrow(IndexOutOfBoundsException::new);
+	}
+	
+	public JavaPairRDD<Integer, String> index (JavaRDD<String> tokens) {
+		return jsc.parallelize(
+					Util.range((int)tokens.count()))
+				.zip(tokens);
+	}
+	
+	public void trainWordsFromText (JavaRDD<String> tokenizedText, int cr) {
+		JavaPairRDD<Integer, String> tokens = this.index(tokenizedText);
+		JavaRDD<Integer> indices = tokens.keys();
+		tokens.foreach((entry) -> 
+			this.trainWordFromContext(
+				entry._2(),
+				jsc.parallelize(Util.rangeNegToPos(cr))
+					.map((x) -> x + entry._1())
+					.intersection(indices)
+					.map((x) -> tokens.lookup(x).get(0))));
+	}
+	public void trainWordsFromText (JavaRDD<String> tokenizedText) {
+		trainWordsFromText(tokenizedText, this.getCR());
+	}
+	
+	public void trainWordsFromBatch (JavaPairRDD<String, String> tokenizedTexts) {
+		int cr = this.getCR();
+		tokenizedTexts.values()
+			.map((text) -> jsc.parallelize(
+								Arrays.asList(text.split("\\s+"))))
+			.foreach((tokens) -> this.trainWordsFromText(tokens, cr));
+	}
+	
+	
+	
+	//Files
+	public JavaRDD<String> loadTextFile (String path) {
+		FlatMapFunction<String, String> brk = 
+				(str) -> Arrays.asList(str.split("\\s+"));
+		return jsc.textFile(path).flatMap(brk);
+	}
+	
+	public JavaPairRDD<String, String> loadTextDir (String path) {
+		return jsc.wholeTextFiles(path);
 	}
 }

@@ -7,7 +7,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
@@ -19,22 +18,7 @@ import rivet.core.RIV;
 
 public final class Util {	
 	private Util(){}
-	
-	public static interface Fn<A, R> {
-		R apply (A a) throws Exception;
-	}
-	public static interface BiFn<A, B, R> {
-		R apply (A a, B b) throws Exception;
-	}
-	public static interface Cn<A> {
-		A accept (A a) throws Exception;
-	}
-	public static interface Su<R> {
-		R get (R r) throws Exception;
-	}
-	
-	
-	
+		
 	public static <K, V> HashMap<K, V> safeCopy (Map<K, V> hash) {
 		HashMap<K, V> res = new HashMap<>();
 		res.putAll(hash);

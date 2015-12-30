@@ -6,8 +6,6 @@ import java.util.Map;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 
-import rivet.core.RIV;
-
 public class HBase {
 	public static byte[] dataColumn = stringToBytes("data");
 	
