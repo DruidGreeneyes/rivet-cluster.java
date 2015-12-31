@@ -83,12 +83,14 @@ public class HBaseClient implements Closeable {
 	}
 	
 	public void put (Map<String, String> row) throws IOException {
-		this.table.put(new Put(row));
+		Put put = new Put(row);
+		this.table.put(put);
 	}
 	
 	public void setWord (String word, String riv) throws IOException {
 		Map<String, String> res = new HashMap<>();
-		res.put(word, riv);
+		res.put("word", word);
+		res.put("lex", riv);
 		this.put(res);
 	}
 	

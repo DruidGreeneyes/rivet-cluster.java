@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
@@ -22,6 +23,11 @@ public final class Util {
 	public static <K, V> HashMap<K, V> safeCopy (Map<K, V> hash) {
 		HashMap<K, V> res = new HashMap<>();
 		res.putAll(hash);
+		return res;
+	}
+	public static <K, V> TreeMap<K, V> safeCopy (NavigableMap<K, V> map) {
+		TreeMap<K, V> res = new TreeMap<>();
+		res.putAll(map);
 		return res;
 	}
 	public static Words safeCopy (Words words) {
@@ -55,12 +61,15 @@ public final class Util {
 		if (c > 9) return lis;
 		else {
 			int s = lis.size();
-			List<T> l = new ArrayList<>(s);
-			lis.forEach((item) -> l.set(r.nextInt(s), item));
+			List<T> l = Util.safeCopy(lis);
+			lis.forEach((item) -> {
+				int i = r.nextInt(s);
+				l.set(i, item);
+			});
 			return shuffleList(l, r, (c + 1));
 		}
 	}
-	public static <T> List<T> shuffleList(List<T> lis, long seed) {	
+	public static <T> List<T> shuffleList(List<T> lis, long seed) {
 		return shuffleList(lis, new Random(seed), 0); 
 	}
 	

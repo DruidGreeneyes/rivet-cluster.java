@@ -10,12 +10,13 @@ public class RIV extends HashMap<Integer, Integer> {
 		RIV ret = new RIV();
 		Arrays.stream(
 					mapString.trim()
-						.substring(1, mapString.length() - 2)
+						.substring(1, mapString.length() - 1)
 						.split(", "))
 			.map((x) -> x.split("="))
-			.forEach((entry) -> ret.put(
-									Integer.parseInt(entry[0]),
-									Integer.parseInt(entry[1])));
+			.forEach((entry) -> {
+				ret.put(Integer.parseInt(entry[0]),
+					Integer.parseInt(entry[1]));
+				});
 		return ret;		
 	}
 }

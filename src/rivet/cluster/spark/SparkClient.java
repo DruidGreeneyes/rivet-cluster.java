@@ -5,13 +5,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.NavigableMap;
 import java.util.Optional;
+import java.util.TreeMap;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.TableInputFormat;
@@ -20,6 +21,7 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
+import org.apache.spark.api.java.function.PairFunction;
 
 import rivet.Util;
 import rivet.cluster.Spark;
@@ -36,24 +38,50 @@ public class SparkClient implements Closeable {
 	private final int k = 48;
 	private final int cr = 3;
 	
-	private SparkConf sparkConf;
-	private JavaSparkContext jsc;
-	private Configuration conf;
-	private JavaPairRDD<ImmutableBytesWritable, Result> rdd;
+	private final byte KV_MAX = Byte.parseByte("-1");
 	
-	private static byte[] DATA = HBase.stringToBytes("data");
-	private static byte[] LEX = HBase.stringToBytes("lex");
+	private final PairFunction<Tuple2<ImmutableBytesWritable, Result>, String, NavigableMap<String, String>> B2BA = 
+			(x) -> {
+				NavigableMap<String, String> cells = new TreeMap<>();
+				x._2.getFamilyMap(HBase.stringToBytes(DATA)).forEach((k, v) -> cells.put(HBase.bytesToString(k),
+																	HBase.bytesToString(v)));
+				return Tuple2.apply(Spark.ibwToString(x._1), cells);
+			};
+	@SuppressWarnings("unused")
+	private final PairFunction<Tuple2<String, NavigableMap<String, String>>, ImmutableBytesWritable, Result> BA2B =
+			(x) -> {
+				List<Cell> cells = new ArrayList<>();
+				long ts = System.currentTimeMillis();
+				byte[] rowKey = HBase.stringToBytes(x._1);
+				x._2.forEach((c, v) -> 
+					cells.add(CellUtil.createCell(
+							rowKey,
+							HBase.stringToBytes(DATA), 
+							HBase.stringToBytes(c), 
+							ts,
+							KV_MAX,
+							HBase.stringToBytes(v))));
+				return Tuple2.apply(new ImmutableBytesWritable(rowKey), Result.create(cells));
+			};
 	
-	private static ImmutableBytesWritable META = Spark.stringToIBW("metadata");
+	public SparkConf sparkConf;
+	public JavaSparkContext jsc;
+	public Configuration conf;
+	public JavaPairRDD<String, NavigableMap<String, String>> rdd;
+	
+	public static String DATA = "data";
+	public static String LEX = "lex";
+	
+	public static String META = "metadata";
 
-	private static byte[] SIZE = HBase.stringToBytes("size");
-	private static byte[] K = HBase.stringToBytes("k");
-	private static byte[] CR = HBase.stringToBytes("cr");
+	public static String SIZE = "size";
+	public static String K = "k";
+	public static String CR = "cr";
 	
 	
 	//Class necessities
 	public SparkClient (String tableName) throws IOException {
-		this.sparkConf = new SparkConf().setAppName("Rivet");
+		this.sparkConf = new SparkConf().setAppName("Rivet").setMaster("local[2]");
 		this.jsc = new JavaSparkContext(sparkConf);
 		this.conf = HBaseConfiguration.create();
 		this.conf.set(TableInputFormat.INPUT_TABLE, tableName);
@@ -61,63 +89,73 @@ public class SparkClient implements Closeable {
 						conf,
 						TableInputFormat.class,
 						ImmutableBytesWritable.class, 
-						Result.class);
+						Result.class)
+					.mapToPair(B2BA);
 	}
 	
 	@Override
 	public void close() throws IOException {
-		this.rdd.saveAsNewAPIHadoopDataset(this.conf);
 		this.jsc.stop();
 		this.jsc.close();
 	}
 	
 	
 	//low-level
-	public Optional<Result> getRow (ImmutableBytesWritable rowKey) {
-		return Spark.firstOrError(this.rdd.lookup(rowKey));
+	public Optional<NavigableMap<String, String>> getRow (String rowKey) {
+		List<NavigableMap<String, String>> res = this.rdd.lookup(rowKey);
+		return (res.isEmpty() || res.get(0).isEmpty())
+				? Optional.empty()
+						: Optional.of(res.get(0));
 	}
 	
-	public Optional<byte[]> getDataPoint (ImmutableBytesWritable rowKey, byte[] columnKey) {
+	public Optional<String> getDataPoint (String rowKey, String columnKey) {
 		return this.getRow(rowKey)
-				.map((x) -> x.getValue(DATA, columnKey));
+				.map((cells) -> cells.get(columnKey));
 	}
 	
-	public Optional<Result> setRow (ImmutableBytesWritable rowKey, Result newRes) {
-		List<Tuple2<ImmutableBytesWritable, Result>> newRow = new ArrayList<>();
-		newRow.add(new Tuple2<ImmutableBytesWritable, Result>(
-				META, newRes));
-		JavaPairRDD<ImmutableBytesWritable, Result> resRDD = jsc.parallelizePairs(newRow);
+	public Optional<NavigableMap<String, String>> rddSetRow (String rowKey, NavigableMap<String, String> newRes) {
+		List<Tuple2<String, NavigableMap<String, String>>> newRow = 
+				new ArrayList<>();
+		newRow.add(
+				new Tuple2<String, NavigableMap<String, String>>(DATA, newRes));
+		JavaPairRDD<String, NavigableMap<String, String>> resRDD = 
+				jsc.parallelizePairs(newRow);
 		this.rdd = rdd.union(resRDD).distinct();
 		return this.getRow(rowKey);
 	}
+	public Optional<NavigableMap<String, String>> hbcSetRow (String rowKey, NavigableMap<String, String> newRes) throws IOException {
+		NavigableMap<String, String> row = Util.safeCopy(newRes);
+		row.put("word", rowKey);
+		try (HBaseClient hbc = new HBaseClient(this.conf)) {
+			hbc.put(row);
+		}
+		return this.getRow(rowKey);
+	}
 	
-	public Optional<byte[]> setDataPoint (ImmutableBytesWritable rowKey, byte[] columnKey, byte[] value) {
-		Optional<Result> r = this.getRow(rowKey);
-		List<Cell> newCells = (r.isPresent())
-				? r.get().getColumnCells(DATA, columnKey)
-						: new ArrayList<>();
-		if (newCells.isEmpty()) 
-			System.out.println("Adding new Row: " + Spark.ibwToString(rowKey));
-		newCells.add(CellUtil.createCell(
-				rowKey.copyBytes(), 
-				DATA, 
-				columnKey, 
-				System.currentTimeMillis(),
-				KeyValue.Type.Maximum.getCode(),
-				value));
-		return this.setRow(rowKey, Result.create(newCells))
-				.map((x) -> x.getValue(DATA, columnKey));
-	}	
+	public Optional<String> rddSetDataPoint (String row, String column, String value) {
+		NavigableMap<String, String> newCells = Util.safeCopy(this.getRow(row)
+															.orElse(new TreeMap<>()));
+		if (newCells.isEmpty()) System.out.println("Adding new Row: " + row);
+		newCells.put(column, value);
+		return this.rddSetRow(row, newCells)
+				.map((cells) -> cells.get(column));
+	}
+	public Optional<String> hbcSetDataPoint (String row, String column, String value) throws IOException {
+		NavigableMap<String, String> map = new TreeMap<>();
+		map.put(column, value);
+		return this.hbcSetRow(row, map)
+				.map((cells) -> cells.get(column));
+	}
 	
 	
 	//Lexicon-specific
-	public Optional<Integer> getMetadata(byte[] item) {
-		return this.getDataPoint(META, item).map(HBase::bytesToInt);
+	public Optional<Integer> getMetadata(String item) {
+		return this.getDataPoint(META, item).map(Integer::parseInt);
 	}
 	
-	public Optional<Integer> setMetadata(byte[] item, int value) {
-		return this.setDataPoint(META, DATA, HBase.intToBytes(value))
-				.map(HBase::bytesToInt);
+	public Optional<Integer> setMetadata(String item, int value) throws IOException {
+		return this.hbcSetDataPoint(META, DATA, Integer.toString(value))
+				.map(Integer::parseInt);
 	}
 	
 	public int getSize () {	
@@ -129,13 +167,13 @@ public class SparkClient implements Closeable {
 	public int getCR () { 
 		return this.getMetadata(CR).orElse(this.cr); 
 	}
-	public Optional<Integer> setSize (int size) {
+	public Optional<Integer> setSize (int size) throws IOException {
 		return this.setMetadata(SIZE, size);
 	}
-	public Optional<Integer> setK (int k) {
+	public Optional<Integer> setK (int k) throws IOException {
 		return this.setMetadata(K, k);
 	}
-	public Optional<Integer> setCR (int cr) {
+	public Optional<Integer> setCR (int cr) throws IOException {
 		return this.setMetadata(CR, cr);
 	}
 		
@@ -146,8 +184,8 @@ public class SparkClient implements Closeable {
 				 word);
 	}
 	public Optional<RIV> getWordLex (String word) {
-		return this.getDataPoint(Spark.stringToIBW(word), LEX).map(
-				(x) -> RIV.fromString(HBase.bytesToString(x)));
+		return this.getDataPoint(word, LEX).map(
+				(x) -> RIV.fromString(x));
 	}
 	
 	public RIV getOrMakeWordLex (String word) {
@@ -163,10 +201,10 @@ public class SparkClient implements Closeable {
 	}
 	
 	public Optional<RIV> rddSetWordLex (String word, RIV lex) {
-		this.setDataPoint(
-				Spark.stringToIBW(word),
+		this.rddSetDataPoint(
+				word,
 				LEX, 
-				HBase.stringToBytes(lex.toString()));
+				lex.toString());
 		return this.getWordLex(word);
 	}
 	
@@ -213,7 +251,6 @@ public class SparkClient implements Closeable {
 	}
 	
 	
-	
 	//Files
 	public JavaRDD<String> loadTextFile (String path) {
 		FlatMapFunction<String, String> brk = 
@@ -224,4 +261,8 @@ public class SparkClient implements Closeable {
 	public JavaPairRDD<String, String> loadTextDir (String path) {
 		return jsc.wholeTextFiles(path);
 	}
+	
+	//Static
+	public static byte[] sToBytes (String s) { return HBase.stringToBytes(s); }
+	public static String bToString (byte[] b) { return HBase.bytesToString(b); }	
 }
