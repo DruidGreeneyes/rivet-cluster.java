@@ -63,7 +63,7 @@ public class Lexicon {
 		return trainWordsFromText(words, tokens, 0, this.getCR());
 	}
 	public Words trainWordsFromText (List<String> tokenizedText) {
-		return trainWordsFromText(Util.safeCopy(this.words), tokenizedText);
+		return trainWordsFromText(new Words(this.words), tokenizedText);
 	}
 	
 	private Words trainWordsFromBatch (Words words, List<List<String>> tokenses) {
@@ -71,7 +71,7 @@ public class Lexicon {
 		return words;
 	}
 	public Words trainWordsFromBatch (List<List<String>> tokenizedTexts) {
-		return trainWordsFromBatch (Util.safeCopy(this.words), tokenizedTexts);
+		return trainWordsFromBatch (new Words(this.words), tokenizedTexts);
 	}
 	
 	public RIV lexDocument (List<String> tokenizedText) {

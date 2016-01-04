@@ -5,6 +5,8 @@ import java.util.HashMap;
 
 @SuppressWarnings("serial")
 public class RIV extends HashMap<Integer, Integer> {
+	public RIV () { super(); }
+	public RIV (int initialCapacity) { super(initialCapacity); }
 	
 	public static RIV fromString (String mapString) {
 		RIV ret = new RIV();

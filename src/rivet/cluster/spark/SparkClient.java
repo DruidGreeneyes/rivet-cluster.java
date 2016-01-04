@@ -1,18 +1,21 @@
 package rivet.cluster.spark;
 
 import java.io.Closeable;
+import java.io.Serializable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Optional;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
-import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.TableInputFormat;
@@ -29,11 +32,17 @@ import rivet.core.HashLabels;
 import rivet.core.RIV;
 import rivet.persistence.HBase;
 import rivet.persistence.hbase.HBaseClient;
+import rivet.persistence.hbase.HBaseConf;
+import rivet.persistence.hbase.HadoopConf;
 
 import scala.Tuple2;
 
 
-public class SparkClient implements Closeable {
+public class SparkClient implements Closeable, Serializable {	
+	private static final long serialVersionUID = -3403510942281426251L;
+	/**
+	 * 
+	 */
 	private final int size = 16000;
 	private final int k = 48;
 	private final int cr = 3;
@@ -64,9 +73,7 @@ public class SparkClient implements Closeable {
 				return Tuple2.apply(new ImmutableBytesWritable(rowKey), Result.create(cells));
 			};
 	
-	public SparkConf sparkConf;
 	public JavaSparkContext jsc;
-	public Configuration conf;
 	public JavaPairRDD<String, NavigableMap<String, String>> rdd;
 	
 	public static String DATA = "data";
@@ -80,32 +87,41 @@ public class SparkClient implements Closeable {
 	
 	
 	//Class necessities
-	public SparkClient (String tableName) throws IOException {
-		this.sparkConf = new SparkConf().setAppName("Rivet").setMaster("local[2]");
+	public SparkClient (String tableName, String master) {
+		SparkConf sparkConf = new SparkConf().setAppName("Rivet").setMaster(master);
 		this.jsc = new JavaSparkContext(sparkConf);
-		this.conf = HBaseConfiguration.create();
-		this.conf.set(TableInputFormat.INPUT_TABLE, tableName);
-		this.rdd = jsc.newAPIHadoopRDD(
-						conf,
-						TableInputFormat.class,
-						ImmutableBytesWritable.class, 
-						Result.class)
-					.mapToPair(B2BA);
+		this.rdd = this.loadHBaseTable(tableName);
+	}
+		
+	public SparkClient (String tableName) throws IOException {
+		this(tableName, "local[2]");
 	}
 	
 	@Override
 	public void close() throws IOException {
-		this.jsc.stop();
 		this.jsc.close();
 	}
 	
 	
 	//low-level
-	public Optional<NavigableMap<String, String>> getRow (String rowKey) {
-		List<NavigableMap<String, String>> res = this.rdd.lookup(rowKey);
+	public JavaPairRDD<String, NavigableMap<String, String>> loadHBaseTable (String table) {
+		return this.jsc.newAPIHadoopRDD(
+								newConf(table),
+								TableInputFormat.class,
+								ImmutableBytesWritable.class, 
+								Result.class)
+							.mapToPair(B2BA)
+							.setName(table);
+	}
+	
+	public Optional<NavigableMap<String, String>> getRow (String rowKey, JavaPairRDD<String, NavigableMap<String, String>> rdd) {
+		List<NavigableMap<String, String>> res = rdd.lookup(rowKey);
 		return (res.isEmpty() || res.get(0).isEmpty())
 				? Optional.empty()
 						: Optional.of(res.get(0));
+	}
+	public Optional<NavigableMap<String, String>> getRow (String rowKey) {
+		return this.getRow(rowKey, this.rdd);
 	}
 	
 	public Optional<String> getDataPoint (String rowKey, String columnKey) {
@@ -119,22 +135,32 @@ public class SparkClient implements Closeable {
 		newRow.add(
 				new Tuple2<String, NavigableMap<String, String>>(DATA, newRes));
 		JavaPairRDD<String, NavigableMap<String, String>> resRDD = 
-				jsc.parallelizePairs(newRow);
+				this.jsc.parallelizePairs(newRow);
 		this.rdd = rdd.union(resRDD).distinct();
 		return this.getRow(rowKey);
 	}
 	public Optional<NavigableMap<String, String>> hbcSetRow (String rowKey, NavigableMap<String, String> newRes) throws IOException {
-		NavigableMap<String, String> row = Util.safeCopy(newRes);
+		NavigableMap<String, String> row = new TreeMap<>(newRes);
 		row.put("word", rowKey);
-		try (HBaseClient hbc = new HBaseClient(this.conf)) {
+		try (HBaseClient hbc = new HBaseClient(rddConf(this.rdd))) {
 			hbc.put(row);
 		}
 		return this.getRow(rowKey);
 	}
 	
+	public boolean deleteRow (String row, JavaPairRDD<String, NavigableMap<String, String>> rdd) throws IOException {
+		try (HBaseClient hbc = new HBaseClient(rddConf(rdd))) {
+			hbc.delete(row);
+		}
+		return !this.getRow(row, rdd).isPresent();
+	}
+	public boolean deleteRow (String row) throws IOException {
+		return this.deleteRow(row, this.rdd);
+	}
+	
 	public Optional<String> rddSetDataPoint (String row, String column, String value) {
-		NavigableMap<String, String> newCells = Util.safeCopy(this.getRow(row)
-															.orElse(new TreeMap<>()));
+		NavigableMap<String, String> newCells = new TreeMap<>();
+		this.getRow(row).ifPresent(newCells::putAll);
 		if (newCells.isEmpty()) System.out.println("Adding new Row: " + row);
 		newCells.put(column, value);
 		return this.rddSetRow(row, newCells)
@@ -178,6 +204,7 @@ public class SparkClient implements Closeable {
 	}
 		
 	public RIV getWordInd (String word) {
+		System.out.println("getWordInd called with arg: " + word); 
 		 return HashLabels.generateLabel(
 				 this.getSize(),
 				 this.getK(),
@@ -194,7 +221,7 @@ public class SparkClient implements Closeable {
 	}
 
 	public Optional<RIV> hbcSetWordLex (String word, RIV lex) throws IOException {
-		try (HBaseClient hbc = new HBaseClient(this.conf)) {
+		try (HBaseClient hbc = new HBaseClient(rddConf(this.rdd))) {
 			hbc.setWord(word, lex.toString());
 		}
 		return this.getWordLex(word);
@@ -208,46 +235,122 @@ public class SparkClient implements Closeable {
 		return this.getWordLex(word);
 	}
 	
-	
-	
 	//Text Input
-	public RIV trainWordFromContext (String word, JavaRDD<String> context) {
-		return this.rddSetWordLex(
-					word,
-					context.map((x) -> this.getWordInd(x))
-						   .fold(
-								this.getOrMakeWordLex(word), 
-								HashLabels::addLabels))
+
+	public RIV trainWordFromContext (String word, List<String> context) throws IOException {
+		System.out.println("trainWordFromContext called with args:\nWord: " + word +
+							"\nContext: " + context.toString());
+		RIV lex = context.stream()
+					.map(this::getWordInd)
+					.reduce(
+						this.getOrMakeWordLex(word),
+						HashLabels::addLabels);
+		return this.hbcSetWordLex(word, lex)
 				.orElseThrow(IndexOutOfBoundsException::new);
 	}
 	
-	public JavaPairRDD<Integer, String> index (JavaRDD<String> tokens) {
-		return jsc.parallelize(
-					Util.range((int)tokens.count()))
-				.zip(tokens);
+	public Map<Long, String> index (List<String> tokens, Long count) {
+		Map<Long, String> res = new HashMap<>();
+		Util.range(count).forEach((i) -> 
+			res.put(i, tokens.get(i.intValue())));
+		return res;
 	}
 	
-	public void trainWordsFromText (JavaRDD<String> tokenizedText, int cr) {
-		JavaPairRDD<Integer, String> tokens = this.index(tokenizedText);
-		JavaRDD<Integer> indices = tokens.keys();
+	public <T> JavaPairRDD<Long, T> index (JavaRDD<T> tokens, Long count) {
+		return tokens.zipWithIndex().mapToPair(Tuple2::swap);
+		
+		
+/*		
+		List<Long> indices = Util.range(count); 
+		JavaRDD<Long> rdd = this.jsc.parallelize(indices);
+		Long rCount = rdd.count();
+		System.out.println(count);
+		System.out.println(indices.size() + " - " + indices.toString());
+		System.out.println(rCount);
+		JavaPairRDD<Long, T> res = rdd.zip(tokens);
+		System.out.println(res.count() + " - " + res.keys().collect().toString());
+		return res;
+*/
+	}
+
+	public void trainWordsFromText (List<String> tokenizedText, Integer cr) throws IOException {
+		Integer count = tokenizedText.size();
+		Map<Long, String> tokens = this.index(tokenizedText, count.longValue());
+		tokens.forEach((x, y) -> System.out.println(x + ": " + y));
+		tokens.forEach((index, value) -> {
+			try {
+				this.trainWordFromContext(
+						value,
+						Util.butCenter(
+								Util.rangeNegToPos(cr),
+								cr)
+							.stream()
+							.map((x) -> tokens.get(x + index))
+							.filter((x) -> x != null)
+							.collect(Collectors.toList()));
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		});
+	}
+	
+	public void trainWordsFromText (List<String> tokenizedText) throws IOException {
+		this.trainWordsFromText(tokenizedText, this.getCR());
+	}
+	
+	/*
+	public RIV trainWordFromContext (String word, JavaRDD<String> context) throws IOException {
+		RIV lex = context.map(this::getWordInd)
+					.fold(
+						this.getOrMakeWordLex(word),
+						HashLabels::addLabels);
+		return this.hbcSetWordLex(word, lex)
+				.orElseThrow(IndexOutOfBoundsException::new);
+	}
+			
+	public void trainWordsFromText (JavaRDD<String> tokenizedText, Integer cr) throws IOException {
+		Long count = tokenizedText.count();
+		JavaPairRDD<Long, String> tokens = this.index(tokenizedText, count);
 		tokens.foreach((entry) -> 
 			this.trainWordFromContext(
-				entry._2(),
-				jsc.parallelize(Util.rangeNegToPos(cr))
-					.map((x) -> x + entry._1())
-					.intersection(indices)
-					.map((x) -> tokens.lookup(x).get(0))));
+					entry._2, 
+					jsc.parallelize(
+							Util.butCenter(
+									Util.rangeNegToPos(cr),
+									cr))
+						.map((x) -> x + entry._1)
+						.filter((x) -> 0 <= x && x < count)
+						.map((x) -> tokens.lookup(x).get(0))));
 	}
-	public void trainWordsFromText (JavaRDD<String> tokenizedText) {
-		trainWordsFromText(tokenizedText, this.getCR());
+
+	public void trainWordsFromText (JavaRDD<String> tokenizedText) throws IOException {
+		this.trainWordsFromText(tokenizedText, this.getCR());
+	}
+	*/
+	
+	public void trainWordsFromBatch (JavaPairRDD<String, String> tokenizedTexts) throws IOException {
+		int cr = this.getCR();
+		Long count = tokenizedTexts.count();
+		JavaPairRDD<Long, String> indexed = index(tokenizedTexts.values(), count);
+		for (Long i = 0L; i < count; i++) {
+			List<String> result = indexed.lookup(i);
+			String res = result.get(0);
+			String[] reses = res.split("\\s+");
+			List<String> text = Arrays.asList(reses);
+			this.trainWordsFromText(
+					text,
+					cr);
+		}
 	}
 	
-	public void trainWordsFromBatch (JavaPairRDD<String, String> tokenizedTexts) {
-		int cr = this.getCR();
-		tokenizedTexts.values()
-			.map((text) -> jsc.parallelize(
-								Arrays.asList(text.split("\\s+"))))
-			.foreach((tokens) -> this.trainWordsFromText(tokens, cr));
+	public void clearDB (String name) {
+		this.loadHBaseTable(name).keys().collect().forEach((x) -> {
+			try {
+				this.deleteRow(x);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		});
 	}
 	
 	
@@ -255,14 +358,30 @@ public class SparkClient implements Closeable {
 	public JavaRDD<String> loadTextFile (String path) {
 		FlatMapFunction<String, String> brk = 
 				(str) -> Arrays.asList(str.split("\\s+"));
-		return jsc.textFile(path).flatMap(brk);
+		return this.jsc.textFile(path).flatMap(brk);
 	}
 	
 	public JavaPairRDD<String, String> loadTextDir (String path) {
-		return jsc.wholeTextFiles(path);
+		return this.jsc.wholeTextFiles(path);
 	}
 	
 	//Static
 	public static byte[] sToBytes (String s) { return HBase.stringToBytes(s); }
 	public static String bToString (byte[] b) { return HBase.bytesToString(b); }	
+	
+	public static HadoopConf newConf () {
+		return HBaseConf.create();
+	}
+	public static Configuration newConf (String tableName) {
+		HadoopConf conf = newConf();
+		conf.set(TableInputFormat.INPUT_TABLE, tableName);
+		return conf;
+	}
+	
+	public static Configuration rddConf (JavaPairRDD<?, ?> rdd) {
+		return newConf(rdd.name());
+	}
+	public static Configuration rddConf (JavaRDD<?> rdd) {
+		return newConf(rdd.name());
+	}
 }

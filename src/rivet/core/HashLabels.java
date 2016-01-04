@@ -50,24 +50,31 @@ public final class HashLabels {
 	}
 	
 	public static List<Integer> makeIndices (int size, int k, long seed) {
-		return Util.randIntList(size, k, seed);
+		return new ArrayList<>(Util.randIntList(size, k, seed));
 	}
 	
 	public static long makeSeed (String word) {
+		System.out.println("makeString called with arg: " + word);
 		return word.chars()
 				.asLongStream()
 				.map((x) -> x * (10 ^ (word.indexOf((int)x))))
 				.sum();
 	}
 	
-	public static int makeEven (int x) { return 2 * (Math.round(x / 2)); }
+	public static int makeEven (int x) { 
+		return (x % 2 == 0) ? x : x + 1; 
+		}
 	
 	public static RIV generateLabel (int size, int k, String word) {
-		RIV result = new RIV();
+		System.out.println("generateLabels called with args\nSize: " + size +
+							"K: " + k +
+							"Word: " + word);
+		RIV res = new RIV();
 		long seed = makeSeed(word);
-		List<Integer> ks = makeKs(makeEven(k), seed);
-		List<Integer> is = makeIndices(size, makeEven(k), seed);
-		Util.range(ks.size()).forEach((x) -> result.put(is.get(x), ks.get(x)));
-		return result;
+		int j = makeEven(k);
+		List<Integer> ks = makeKs(j, seed);
+		List<Integer> is = makeIndices(size, j, seed);
+		is.forEach((x) -> res.put(x, ks.get(is.indexOf(x))));
+		return res;
 	}	
 }

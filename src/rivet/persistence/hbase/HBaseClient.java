@@ -3,7 +3,6 @@ package rivet.persistence.hbase;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +17,7 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
@@ -54,7 +54,7 @@ public class HBaseClient implements Closeable {
 		String tableName = conf.get(TableInputFormat.INPUT_TABLE);
 		Optional<Table> t = this.getTable(tableName);
 		if (!t.isPresent()) 
-			throw new IOException("Table does not exist: " + tableName);
+			this.makeTable(tableName);
 		this.table = t.get();
 	}
 	
@@ -82,9 +82,12 @@ public class HBaseClient implements Closeable {
 		return Util.takeBy(num, keyfn, res);
 	}
 	
+	public void put (Table table, Map<String, String> row) throws IOException {
+		table.put(new Put(row));
+	}
+	
 	public void put (Map<String, String> row) throws IOException {
-		Put put = new Put(row);
-		this.table.put(put);
+		this.table.put(new Put(row));
 	}
 	
 	public void setWord (String word, String riv) throws IOException {
@@ -94,13 +97,36 @@ public class HBaseClient implements Closeable {
 		this.put(res);
 	}
 	
+	public void delete (String row) throws IOException {
+		Delete del = new Delete(HBase.stringToBytes(row));
+		del.addFamily(HBase.stringToBytes("data"));
+		this.table.delete(del);
+	}
+	
+	
+	
+	public Table makeTable (TableName tableName) throws IOException {
+		HTableDescriptor htd = new HTableDescriptor(tableName);
+		this.admin.createTable(htd);
+		return this.conn.getTable(tableName);
+	}
+	
+	public Table makeTable (String tableName) throws IOException {
+		return this.makeTable(TableName.valueOf(tableName));
+	}
+	
 	public Table makeTable (String tableName, String[] columns) throws IOException {
 		TableName tn = TableName.valueOf(tableName);
-		HTableDescriptor htd = new HTableDescriptor(tn);
-		Arrays.stream(columns).forEach(
-				(x) -> htd.addFamily(new HColumnDescriptor(x)));
-		this.admin.createTable(htd);
+		this.makeTable(tn);
+		for (String c : columns)
+			this.admin.addColumn(tn, new HColumnDescriptor(c));
 		return this.conn.getTable(tn);
+	}
+	
+	public void addColumn (String tableName, String column) throws IOException {
+		this.admin.addColumn(
+				TableName.valueOf(tableName),
+				new HColumnDescriptor(column));
 	}
 	
 	private Optional<Table> getTable (String tableName) throws IOException {

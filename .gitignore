@@ -1,7 +1,7 @@
 /target
 /classes
 /checkouts
-/data/enron-clean
+/data
 *.jar
 *.class
 /.lein-*

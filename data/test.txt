@@ -1,1 +1,1 @@
-blah
+Use Apache HBase when you need random realtime read write access to your Big Data This project goal is the hosting of very large tables billions of rows by millions of columns atop clusters of commodity hardware Apache HBase is an open source distributed versioned non relational database modeled after Google Bigtable A Distributed Storage System for Structured Data by Chang Just as Bigtable leverages the distributed data storage provided by the Google File System Apache HBase provides Bigtable like capabilities on top of Hadoop and HDFS

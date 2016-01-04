@@ -1,19 +1,23 @@
 import java.io.IOException;
 
+import org.apache.spark.api.java.JavaPairRDD;
+
 import rivet.cluster.spark.SparkClient;
-import rivet.core.RIV;
 
 public class Program {
 	public static void main(String[] args) throws IOException {
-		String word = "text";
-		try (SparkClient client = new SparkClient("test")) {
+		String word = "large";
+		String path = "data/sentences";
+		try (SparkClient client = new SparkClient("test");) {
 			print("SparkClient initialized.");
-			print("getWordLex " + word + ": " + client.getWordLex(word));
-			RIV ind = client.getWordInd(word);
-			print("Ind for " + word + ": " + ind.toString());
-			print("hbcSetWordLex: " + client.rddSetWordLex(word, ind).isPresent());
-			print("getWordLex " + word + ": " + client.getWordLex(word));
-		}
+			JavaPairRDD<String, String> files = client.loadTextDir(path);
+			client.trainWordsFromBatch(files);
+			print("Lex for word '" + word + "': " + client.getOrMakeWordLex(word));
+		} /*catch (Exception e) {
+			System.out.println(e.getMessage());
+			Arrays.stream(e.getStackTrace()).forEach((x) ->
+					System.out.println(x));
+		}*/
 	}
 	
 	public static void print (String text) {

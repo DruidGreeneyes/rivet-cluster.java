@@ -1,6 +1,7 @@
 package rivet.persistence.hbase;
 
 import java.util.Map;
+
 import rivet.persistence.HBase;
 
 public class Put extends org.apache.hadoop.hbase.client.Put {
