@@ -87,14 +87,18 @@ public class SparkClient implements Closeable, Serializable {
 	
 	
 	//Class necessities
-	public SparkClient (String tableName, String master) {
-		SparkConf sparkConf = new SparkConf().setAppName("Rivet").setMaster(master);
+	public SparkClient (String tableName, String master, String hostRam, String workerRam) {
+		SparkConf sparkConf = new SparkConf()
+				.setAppName("Rivet")
+				.setMaster(master)
+				.set("spark.driver.memory", hostRam)
+				.set("spark.executor.memory", workerRam);
 		this.jsc = new JavaSparkContext(sparkConf);
 		this.rdd = this.loadHBaseTable(tableName);
 	}
 		
 	public SparkClient (String tableName) throws IOException {
-		this(tableName, "local[2]");
+		this(tableName, "local[2]", "4g", "3g");
 	}
 	
 	@Override
