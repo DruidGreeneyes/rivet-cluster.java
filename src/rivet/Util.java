@@ -6,12 +6,18 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Function;
 import java.util.function.LongPredicate;
 import java.util.stream.Collectors;
+
+import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaRDD;
+
+import scala.Tuple2;
 
 
 public final class Util {	
@@ -130,5 +136,16 @@ public final class Util {
 		T item = lis.get(0);
 	    res.put(keyfn.apply(item), item);
 		return takeBy(num, keyfn, lis.listIterator(), res);
+	}
+	
+	public static Map<Long, String> index (List<String> tokens, Long count) {
+		Map<Long, String> res = new HashMap<>();
+		Util.range(count).forEach((i) -> 
+			res.put(i, tokens.get(i.intValue())));
+		return res;
+	}
+	
+	public static <T> JavaPairRDD<Long, T> index (JavaRDD<T> tokens) {
+		return tokens.zipWithIndex().mapToPair(Tuple2::swap);
 	}
 }

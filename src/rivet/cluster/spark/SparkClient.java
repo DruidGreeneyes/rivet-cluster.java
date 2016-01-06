@@ -2,8 +2,10 @@ package rivet.cluster.spark;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -18,9 +20,7 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.PairFunction;
-import org.apache.spark.api.java.function.VoidFunction;
 import org.apache.spark.streaming.Durations;
 import org.apache.spark.streaming.api.java.JavaDStream;
 import org.apache.spark.streaming.api.java.JavaStreamingContext;
@@ -35,6 +35,7 @@ import scala.Tuple2;
 
 
 public class SparkClient implements Closeable {	
+	
 	private final int size = 16000;
 	private final int k = 48;
 	private final int cr = 3;
@@ -72,7 +73,7 @@ public class SparkClient implements Closeable {
 	}
 		
 	public SparkClient (String tableName) throws IOException {
-		this(tableName, "local[3]", "4g", "3g");
+		this(tableName, "local[2]", "3g", "3g");
 	}
 	
 	@Override
@@ -155,20 +156,15 @@ public class SparkClient implements Closeable {
 				.orElseThrow(IndexOutOfBoundsException::new);
 	}
 	
-	public Map<Long, String> index (List<String> tokens, Long count) {
-		Map<Long, String> res = new HashMap<>();
-		Util.range(count).forEach((i) -> 
-			res.put(i, tokens.get(i.intValue())));
-		return res;
-	}
-	
-	public <T> JavaPairRDD<Long, T> index (JavaRDD<T> tokens, Long count) {
-		return tokens.zipWithIndex().mapToPair(Tuple2::swap);
+	public RIV trainWordFromContext (List<String> wordWithContext) throws IOException {
+		List<String> context = new ArrayList<>(wordWithContext);
+		String word = context.remove(0);
+		return this.trainWordFromContext(word, context);
 	}
 
 	public void trainWordsFromText (List<String> tokenizedText, Integer cr) throws IOException {
 		Integer count = tokenizedText.size();
-		Map<Long, String> tokens = this.index(tokenizedText, count.longValue());
+		Map<Long, String> tokens = Util.index(tokenizedText, count.longValue());
 		tokens.forEach((x, y) -> System.out.println(x + ": " + y));
 		tokens.forEach((index, value) -> {
 			try {
@@ -192,9 +188,10 @@ public class SparkClient implements Closeable {
 	}
 	
 	public void trainWordsFromBatch (JavaPairRDD<String, String> tokenizedTexts) throws IOException {
+		System.out.println("Processing Files...");
 		int cr = this.getCR();
 		Long count = tokenizedTexts.count();
-		JavaPairRDD<Long, String> indexed = index(tokenizedTexts.values(), count);
+		JavaPairRDD<Long, String> indexed = Util.index(tokenizedTexts.values());
 		for (Long i = 0L; i < count; i++) {
 			List<String> result = indexed.lookup(i);
 			String res = result.get(0);
@@ -203,57 +200,56 @@ public class SparkClient implements Closeable {
 			this.trainWordsFromText(
 					text,
 					cr);
+			System.out.println((i + 1) / count + "%: File# " + (i + 1));
 		}
 	}
-	
-	public RIV trainWordFromContext (String word, JavaRDD<String> context) throws IOException {
-		RIV lex = context.map(this::getWordInd)
-					.fold(
-						this.getOrMakeWordLex(word),
-						HashLabels::addLabels);
-		return this.setWordLex(word, lex)
-				.orElseThrow(IndexOutOfBoundsException::new);
-	}
 			
-	public void trainWordsFromText (JavaRDD<String> tokenizedText, Integer cr) throws IOException {
-		Long count = tokenizedText.count();
-		JavaPairRDD<Long, String> tokens = this.index(tokenizedText, count);
-		tokens.foreach((entry) -> 
-			this.trainWordFromContext(
-					entry._2, 
-					jsc.parallelize(
-							Util.butCenter(
-									Util.rangeNegToPos(cr),
-									cr))
-						.map((x) -> x + entry._1)
-						.filter((x) -> 0 <= x && x < count)
-						.map((x) -> tokens.lookup(x).get(0))));
+	public void trainWordsFromText (JavaRDD<List<String>> tokenizedText, Integer cr) throws IOException {
+		tokenizedText.foreach(this::trainWordFromContext);
 	}
 
-	public void trainWordsFromText (JavaRDD<String> tokenizedText) throws IOException {
+	public void trainWordsFromText (JavaRDD<List<String>> tokenizedText) throws IOException {
 		this.trainWordsFromText(tokenizedText, this.getCR());
+	}
+	
+	private static List<String> getContext (String word, List<String> tokens, int cr) {
+		int i = tokens.indexOf(word);
+		List<String> context = Util.butCenter(Util.rangeNegToPos(cr), cr)
+									.stream()
+									.map((n) -> tokens.get(i + n))
+									.filter((s) -> s != null)
+									.collect(Collectors.toList());
+		context.add(0, tokens.get(i));
+		return context;
+	}
+	
+	private static List<List<String>> breakAndGetContext (String text, int cr) {
+		List<String> tokens = Arrays.asList(text.split("\\s+"));
+		return tokens.stream()
+			.map((word) -> getContext(word, tokens, cr))
+			.collect(Collectors.toList());
 	}
 	
 	public void trainWordsFromBatch (String path) {
 		int cr = this.getCR();
-		FlatMapFunction<String, String> brk = 
-				(str) -> Arrays.asList(str.split("\\s+"));
-		VoidFunction<JavaRDD<String>> fun =
-				(text) -> this.trainWordsFromText(text.flatMap(brk), cr);
 		try (JavaStreamingContext jssc = new JavaStreamingContext(jsc, Durations.seconds(1))) {
-			JavaDStream<String> stream = jssc.textFileStream(path);
-			stream.foreachRDD(fun);
+			JavaDStream<List<String>> stream = jssc.textFileStream(path).flatMap((text) -> breakAndGetContext(text, cr));
+			stream.foreachRDD((tokens) -> this.trainWordsFromText(tokens, cr));
 			jssc.start();
 			jssc.awaitTermination();
 		}
 	}
 	
-	
 	//Files
-	public JavaRDD<String> loadTextFile (String path) {
-		FlatMapFunction<String, String> brk = 
-				(str) -> Arrays.asList(str.split("\\s+"));
-		return this.jsc.textFile(path).flatMap(brk);
+	public JavaRDD<List<String>> loadTextFile (String path) throws IOException {
+		int cr = this.getCR();
+		List<String> tokens = Files.lines(Paths.get(path))
+								.flatMap((line) -> Arrays.stream(line.split("\\s+")))
+								.collect(Collectors.toList());
+		return this.jsc.parallelize(
+				Util.mapList(
+						(word) -> getContext(word, tokens, cr),
+						tokens));		
 	}
 	
 	public JavaPairRDD<String, String> loadTextDir (String path) {
