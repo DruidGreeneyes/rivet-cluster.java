@@ -33,8 +33,8 @@ import rivet.persistence.hbase.Put;
 public class HBaseClient implements Closeable {
 	//Vars
 	private Connection conn;
-	private Admin admin;
-	private Table table;
+	public Admin admin;
+	public Table table;
 	
 	//Constructors	
 	public HBaseClient (String tableName) throws IOException {
@@ -66,6 +66,10 @@ public class HBaseClient implements Closeable {
 		this.conn.close();
 	}
 	
+	public void closeConn () throws IOException {
+		this.conn.close();
+	}
+	
 	public Result get (String row) throws IOException {
 		return this.table.get(new Get(row));
 	}
@@ -83,11 +87,11 @@ public class HBaseClient implements Closeable {
 	}
 	
 	public void put (Table table, Map<String, String> row) throws IOException {
-		table.put(new Put(row));
+		table.put(new Put(row, "word"));
 	}
 	
 	public void put (Map<String, String> row) throws IOException {
-		this.table.put(new Put(row));
+		this.table.put(new Put(row, "word"));
 	}
 	
 	public void setWord (String word, String riv) throws IOException {
@@ -123,7 +127,7 @@ public class HBaseClient implements Closeable {
 		return this.conn.getTable(tn);
 	}
 	
-	public void addColumn (String tableName, String column) throws IOException {
+	public void addColumnFamily (String tableName, String column) throws IOException {
 		this.admin.addColumn(
 				TableName.valueOf(tableName),
 				new HColumnDescriptor(column));

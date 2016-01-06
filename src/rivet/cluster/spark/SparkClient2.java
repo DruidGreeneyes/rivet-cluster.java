@@ -1,10 +1,8 @@
 package rivet.cluster.spark;
 
-import org.apache.spark.launcher.SparkLauncher;
-
 import java.io.IOException;
 
-import org.apache.spark.launcher.SparkAppHandle;
+import org.apache.spark.launcher.*;
 
 public class SparkClient2 {
 	
@@ -25,9 +23,11 @@ public class SparkClient2 {
 				// TODO Auto-generated method stub
 			}
 		};
-		SparkAppHandle l = new SparkLauncher()
+		SparkAppHandle handle = new SparkLauncher()
 				.setMaster("local[2]")
 				.setConf(SparkLauncher.DRIVER_MEMORY, "4g")
 				.startApplication(listener);
+		
+		
 	}
 }
