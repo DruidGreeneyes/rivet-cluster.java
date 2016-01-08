@@ -1,5 +1,6 @@
 package rivet;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -147,5 +148,35 @@ public final class Util {
 	
 	public static <T> JavaPairRDD<Long, T> index (JavaRDD<T> tokens) {
 		return tokens.zipWithIndex().mapToPair(Tuple2::swap);
+	}
+	
+	public static String parseTimeString (String timestring) {
+		String ts = timestring.substring(2);
+		if (ts.contains("S"))
+			ts = ts.substring(0, ts.indexOf("S"));
+		if (ts.contains("."))
+			ts = ts.substring(0, ts.indexOf("."));
+		if (ts.contains("H"))
+			ts = ts.replace("H", ":");
+		else
+			ts = "0:" + ts;
+		if (ts.contains("M"))
+			ts = ts.replace("M", ":");
+		else
+			ts = ts.substring(0, ts.indexOf(":") + 1) + "0:" + ts.substring(ts.indexOf(":") + 1);
+		return ts;
+	}
+	
+	public static <I extends Number, N extends Number> void printTimeEntry (long startTimeMillis, I index, N count) {
+		long n = System.currentTimeMillis();
+		long c = count.longValue();
+		long i = index.longValue() + 1;
+		Duration et = Duration.ofMillis(n - startTimeMillis);
+		Duration rt = Duration.ofMillis((c - i) * (n / i));
+		System.out.println(String.format("Word %d out of %d: %d%% of file",
+											i, c, (i/ c)));
+		System.out.println(String.format("%s elapsed, estimate %s remaining",
+											Util.parseTimeString(et.toString()),
+											Util.parseTimeString(rt.toString())));
 	}
 }

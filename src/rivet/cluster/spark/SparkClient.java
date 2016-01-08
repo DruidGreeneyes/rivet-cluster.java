@@ -19,6 +19,7 @@ import org.apache.hadoop.hbase.mapreduce.TableInputFormat;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaRDDLike;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.streaming.Durations;
@@ -73,7 +74,7 @@ public class SparkClient implements Closeable {
 	}
 		
 	public SparkClient (String tableName) throws IOException {
-		this(tableName, "local[2]", "3g", "3g");
+		this(tableName, "local[3]", "4g", "3g");
 	}
 	
 	@Override
@@ -96,10 +97,6 @@ public class SparkClient implements Closeable {
 							.mapToPair(B2BA)
 							.setName(tableName));
 		return ret;
-	}
-	
-	public boolean clearTable () throws IOException {
-		return this.sparkTable.clear();
 	}
 	
 	public int getSize () {	
@@ -164,9 +161,10 @@ public class SparkClient implements Closeable {
 
 	public void trainWordsFromText (List<String> tokenizedText, Integer cr) throws IOException {
 		Integer count = tokenizedText.size();
+		Long t = System.currentTimeMillis();
 		Map<Long, String> tokens = Util.index(tokenizedText, count.longValue());
-		tokens.forEach((x, y) -> System.out.println(x + ": " + y));
 		tokens.forEach((index, value) -> {
+			Util.printTimeEntry(t, index, count);
 			try {
 				this.trainWordFromContext(
 						value,
@@ -193,14 +191,15 @@ public class SparkClient implements Closeable {
 		Long count = tokenizedTexts.count();
 		JavaPairRDD<Long, String> indexed = Util.index(tokenizedTexts.values());
 		for (Long i = 0L; i < count; i++) {
+			System.out.println((i + 1) / count + "%: File# " + (i + 1));
 			List<String> result = indexed.lookup(i);
 			String res = result.get(0);
 			String[] reses = res.split("\\s+");
 			List<String> text = Arrays.asList(reses);
+			System.out.println("Training: " + text.size() + " words.");
 			this.trainWordsFromText(
 					text,
 					cr);
-			System.out.println((i + 1) / count + "%: File# " + (i + 1));
 		}
 	}
 			
@@ -266,10 +265,10 @@ public class SparkClient implements Closeable {
 		return conf;
 	}
 	
-	public static Configuration rddConf (JavaPairRDD<?, ?> rdd) {
+	public static Configuration rddConf (JavaRDDLike<?, ?> rdd) {
 		return newConf(rdd.name());
 	}
-	public static Configuration rddConf (JavaRDD<?> rdd) {
-		return newConf(rdd.name());
-	}
+	//public static Configuration rddConf (JavaRDD<?> rdd) {
+	//	return newConf(rdd.name());
+	//}
 }
