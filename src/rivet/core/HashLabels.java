@@ -67,8 +67,8 @@ public final class HashLabels {
 	
 	public static RIV generateLabel (int size, int k, String word) {
 		System.out.println("generateLabels called with args\nSize: " + size +
-							"K: " + k +
-							"Word: " + word);
+							" K: " + k +
+							" Word: " + word);
 		RIV res = new RIV();
 		long seed = makeSeed(word);
 		int j = makeEven(k);

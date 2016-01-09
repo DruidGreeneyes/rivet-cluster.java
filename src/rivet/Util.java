@@ -1,6 +1,5 @@
 package rivet;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -62,7 +61,7 @@ public final class Util {
 	
 	
 	public static <T, R> List<R> mapList(Function<T, R> fun, List<T> lis) {
-		return lis.parallelStream().map(fun).collect(Collectors.toList());
+		return lis.stream().map(fun).collect(Collectors.toList());
 	}
 	
 	public static List<Long> range (Long start, Long bound, Long step) {
@@ -154,8 +153,6 @@ public final class Util {
 		String ts = timestring.substring(2);
 		if (ts.contains("S"))
 			ts = ts.substring(0, ts.indexOf("S"));
-		if (ts.contains("."))
-			ts = ts.substring(0, ts.indexOf("."));
 		if (ts.contains("H"))
 			ts = ts.replace("H", ":");
 		else
@@ -165,18 +162,5 @@ public final class Util {
 		else
 			ts = ts.substring(0, ts.indexOf(":") + 1) + "0:" + ts.substring(ts.indexOf(":") + 1);
 		return ts;
-	}
-	
-	public static <I extends Number, N extends Number> void printTimeEntry (long startTimeMillis, I index, N count) {
-		long n = System.currentTimeMillis();
-		long c = count.longValue();
-		long i = index.longValue() + 1;
-		Duration et = Duration.ofMillis(n - startTimeMillis);
-		Duration rt = Duration.ofMillis((c - i) * (n / i));
-		System.out.println(String.format("Word %d out of %d: %d%% of file",
-											i, c, (i/ c)));
-		System.out.println(String.format("%s elapsed, estimate %s remaining",
-											Util.parseTimeString(et.toString()),
-											Util.parseTimeString(rt.toString())));
 	}
 }

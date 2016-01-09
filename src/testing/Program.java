@@ -2,28 +2,32 @@ package testing;
 
 import java.io.IOException;
 
-import rivet.cluster.spark.SparkClient2;
+import rivet.cluster.spark.SparkClient;
 
 public class Program {
 	public static Log l;
 	
 	public static void main(String[] args) throws IOException {
-		l = new Log("test/testOutput.txt");
+		l = new Log("test/programOutput.txt");
 		String word = "large";
-		String path = "/home/josh/Copy/Programming/JAVA/src/rivet.java/data/sentences";
-		try (SparkClient2 client = new SparkClient2("test", "local[3]", "4g", "3g");) {
+		String path = "data/sentences";
+		try (SparkClient client = new SparkClient("test", "local[3]", "4g", "3g");) {
 			print("SparkClient initialized.");
-			print("Database cleared 'test': " + client.clearTable());
+			print("Clearing database 'test'...");
+			print(Boolean.toString(client.clearTable()));
 			client.trainWordsFromBatch(path);
-			print("Lex for word '" + word + "': " + client.getOrMakeWordLex(word));
-		} /*catch (Exception e) {
-			System.out.println(e.getMessage());
-			Arrays.stream(e.getStackTrace())
-				.forEach((x) -> System.out.println(x));
-		}*/
+			print("Lex for word '%s': %s", word, client.getOrMakeWordLex(word).toString());
+		} catch (Exception e) {
+			print(e.getMessage());
+			for (StackTraceElement x : e.getStackTrace())
+					print(x.toString());
+		}
 	}
 	
-	public static void print (String text) throws IOException {
+	public static void print (String text) {
 		l.log(text);
+	}
+	public static void print (String fmt, Object...args) {
+		l.log(fmt, args);
 	}
 }

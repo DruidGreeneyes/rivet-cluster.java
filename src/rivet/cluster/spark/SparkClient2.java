@@ -4,6 +4,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
@@ -11,7 +12,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.hadoop.conf.Configuration;
@@ -19,11 +19,9 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.TableInputFormat;
 import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.streaming.Durations;
-import org.apache.spark.streaming.api.java.JavaDStream;
 import org.apache.spark.streaming.api.java.JavaPairDStream;
 import org.apache.spark.streaming.api.java.JavaStreamingContext;
 
@@ -70,7 +68,7 @@ public class SparkClient2 implements Closeable {
 				.set("spark.executor.memory", workerRam);
 		this.jsc = new JavaSparkContext(sparkConf);
 		this.sparkTable = this.createSparkTable(tableName, "word");
-		log = new Log("data/testOutput.txt");
+		log = new Log("data/sparkClient2Output.txt");
 	}
 	
 	@Override
@@ -154,11 +152,11 @@ public class SparkClient2 implements Closeable {
 	private static List<Tuple2<String, RIV>> breakAndGetContextRIVs (String text, int size, int k, int cr) throws IOException {
 		List<String> words = Arrays.asList(text.split("\\s+"));
 		int count = words.size();
-		long t = System.currentTimeMillis();
+		Instant t = Instant.now();
 		log.log("Processing line, step 1: " + count + " words.");
 		return Util.mapList(
 				(index) -> {
-					Util.printTimeEntry(t, index, count);
+					log.logTimeEntry(t, index, count);
 					return getContextRIV(words, index, size, k, cr);
 				},
 				Util.range(count));
@@ -168,13 +166,6 @@ public class SparkClient2 implements Closeable {
 		int size = this.getSize();
 		int k = this.getK();
 		int cr = this.getCR();
-		JavaStreamingContext jssc = new JavaStreamingContext(this.jsc, Durations.seconds(1));
-		JavaDStream<String> stream = jssc.queueStream(this.loadTextDir(path), true);
-		stream.foreachRDD((rdd) -> log.log(rdd.collect().toString()));
-		jssc.start();
-		jssc.awaitTermination();
-		jssc.close();
-		/*
 		try (JavaStreamingContext jssc = new JavaStreamingContext(jsc, Durations.seconds(1))) {
 			JavaPairDStream<String, RIV> stream = 
 					jssc.textFileStream(path) 
@@ -182,10 +173,10 @@ public class SparkClient2 implements Closeable {
 			stream.foreachRDD((rdd) -> {
 				Map<Tuple2<String, RIV>, Long> map = rdd.zipWithIndex().collectAsMap();
 				int count = map.size();
-				long t = System.currentTimeMillis();
+				Instant t = Instant.now();
 				System.out.println("Processing file, step 2");
 				map.forEach((entry, index) -> {
-					Util.printTimeEntry(t, index, count);
+					log.logTimeEntry(t, index, count);
 					try {
 						this.setWordLex(
 								entry._1,
@@ -200,10 +191,11 @@ public class SparkClient2 implements Closeable {
 			jssc.start();
 			jssc.awaitTermination();
 		}
-		*/
 	}
 	
 	//Files
+	
+	
 	
 	public JavaRDD<String> loadTextFile (String path) throws IOException {
 		return this.jsc.textFile(path);
