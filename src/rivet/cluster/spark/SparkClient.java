@@ -9,7 +9,6 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
@@ -27,7 +26,7 @@ import rivet.core.RIV;
 import rivet.persistence.HBase;
 
 import scala.Tuple2;
-
+import testing.Counter;
 import testing.Log;
 
 
@@ -148,7 +147,7 @@ public class SparkClient implements Closeable {
 		return Tuple2.apply(
 				tokens.get(index), 
 				Util.butCenter(Util.rangeNegToPos(cr), cr)
-					.stream()
+					.parallelStream()
 					.filter((n -> 0 <= n && n < count))
 					.map((n) -> tokens.get(n))
 					.map((word) -> getWordInd(size, k, word))
@@ -159,17 +158,19 @@ public class SparkClient implements Closeable {
 		String text = textEntry._2;
 		List<String> words = Arrays.asList(text.split("\\s+"));
 		int count = words.size();
-		Instant t = Instant.now();
 		log.log("Processing file: %s    ----    %d words.", textEntry._1, count);
+		Instant t = Instant.now();
+		Counter c = new Counter();
 		return Util.mapList(
 				(index) -> {
-					log.logTimeEntry(t, index, count);
+					log.logTimeEntry(t, c.inc(), count);
 					return getContextRIV(words, index, size, k, cr);
 				},
 				Util.range(count));
 	}
 	
 	public void trainWordsFromBatch (JavaPairRDD<String, String> tokenizedTexts) throws IOException {
+		Instant startTime = Instant.now();
 		int size = this.getSize();
 		int k = this.getK();
 		int cr = this.getCR();
@@ -179,12 +180,12 @@ public class SparkClient implements Closeable {
 						(textEntry) -> breakAndGetContextRIVs(textEntry, size, k, cr))
 					.reduceByKey(HashLabels::addLabels)
 					.collect();
-		log.log("Updating word entries...");
-		long count = tuples.size();
 		Instant t = Instant.now();
-		tuples.stream().forEach((entry) -> {
-			int index = tuples.indexOf(entry);
-			log.logTimeEntry(t, index, count);
+		Counter c = new Counter();
+		long count = (long)tuples.size();
+		log.log("Updating %d word entries...", tuples.size());
+		tuples.parallelStream().forEach((entry) -> {
+			log.logTimeEntry(t, c.inc(), count);
 			RIV lex = HashLabels.addLabels(
 					entry._2, 
 					this.getOrMakeWordLex(entry._1));
@@ -194,7 +195,7 @@ public class SparkClient implements Closeable {
 				e.printStackTrace();
 			}
 		});
-		log.log("Complete: %s elapsed.", Util.parseTimeString(Duration.between(t, Instant.now()).toString()));
+		log.log("Complete: %s elapsed.", Util.parseTimeString(Duration.between(startTime, Instant.now()).toString()));
 	}
 	
 	public void trainWordsFromBatch (String path) throws IOException {

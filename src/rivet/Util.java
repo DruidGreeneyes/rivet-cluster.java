@@ -56,12 +56,12 @@ public final class Util {
 	}
 	
 	public static <T> List<T> setToList (Set<T> s) {
-		return s.stream().collect(Collectors.toList());
+		return s.parallelStream().collect(Collectors.toList());
 	}
 	
 	
 	public static <T, R> List<R> mapList(Function<T, R> fun, List<T> lis) {
-		return lis.stream().map(fun).collect(Collectors.toList());
+		return lis.parallelStream().map(fun).collect(Collectors.toList());
 	}
 	
 	public static List<Long> range (Long start, Long bound, Long step) {
@@ -113,7 +113,7 @@ public final class Util {
 	public static List<String> getContextWindow (Integer index, Integer cr, List<String> text) {
 		Integer s = text.size();
 		return butCenter(rangeNegToPos(cr), cr)
-					.stream()
+					.parallelStream()
 					.map((x) -> x + index)
 					.filter((x) -> x >= 0 && x < s)
 					.map((x) -> text.get(x))
