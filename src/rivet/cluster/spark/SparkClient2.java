@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.hadoop.conf.Configuration;
@@ -124,8 +125,7 @@ public class SparkClient2 implements Closeable {
 	}
 	
 	public Optional<RIV> getWordLex (String word) {
-		return this.sparkTable.getPoint(word, LEX).map(
-				(x) -> RIV.fromString(x));
+		return this.sparkTable.getPoint(word, LEX).map(RIV::new);
 	}
 	
 	public RIV getOrMakeWordLex (String word) {
@@ -135,15 +135,15 @@ public class SparkClient2 implements Closeable {
 	
 	public Optional<RIV> setWordLex (String word, RIV lex) throws IOException {
 		return this.sparkTable.setPoint(word, "lex", lex.toString())
-				.map(RIV::fromString);
+				.map(RIV::new);
 	}
 	
 	private static Tuple2<String, RIV> getContextRIV (List<String> tokens, int index, int size, int k, int cr) {
 		return Tuple2.apply(
 				tokens.get(index), 
 				Util.butCenter(Util.rangeNegToPos(cr), cr)
-					.stream()
-					.map((n) -> tokens.get(index + n))
+					.parallel()
+					.mapToObj((n) -> tokens.get(index + n))
 					.filter((word) -> word != null)
 					.map((word) -> getWordInd(size, k, word))
 					.reduce(new RIV(), HashLabels::addLabels));
@@ -154,12 +154,13 @@ public class SparkClient2 implements Closeable {
 		int count = words.size();
 		Instant t = Instant.now();
 		log.log("Processing line, step 1: " + count + " words.");
-		return Util.mapList(
-				(index) -> {
+		return Util.range(count)
+				.parallel()
+				.mapToObj((index) -> {
 					log.logTimeEntry(t, index, count);
 					return getContextRIV(words, index, size, k, cr);
-				},
-				Util.range(count));
+				})
+				.collect(Collectors.toList());
 	}
 	
 	public void trainWordsFromBatch (String path) throws IOException {

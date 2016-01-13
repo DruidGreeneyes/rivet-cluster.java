@@ -2,10 +2,11 @@ package testing;
 
 
 import java.io.Closeable;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.time.Clock;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -14,12 +15,23 @@ import rivet.Util;
 public class Log implements Closeable {
 	private PrintStream stream;
 	
-	public Log (String path) throws FileNotFoundException {
-		stream = new PrintStream(path);
+	public Log (String path) {
+		Path dest = Paths.get(path);
+		try {
+		Files.deleteIfExists(dest);
+		Files.createFile(dest);
+		stream = new PrintStream(dest.toString());		
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 	
 	public void log (String string) {
-		stream.format("%s: %s%n", Clock.systemUTC().instant().toString(), string);
+		stream.format("%s: %s%n", Instant.now().toString(), string);
+	}
+	
+	public void log (Object obj) {
+		log(String.valueOf(obj));
 	}
 		
 	public void log (String fmt, Object...args) {
