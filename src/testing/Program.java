@@ -1,5 +1,6 @@
 package testing;
 
+import java.io.File;
 import java.io.IOException;
 import java.time.Instant;
 
@@ -46,12 +47,17 @@ public class Program {
 	}
 	
 	public static void testSGMLProcessing() {
-		String path = "/home/josh/Copy/Programming/JAVA/src/rivet.java/data/reuters";
+		String path = "data/reuters";
 		try (FileProcessor fp = new FileProcessor("local[3]", "4g", "3g")) { 
-			fp.processSGMLBatchToSentences("data/reuters");
+			fp.processSGMLBatchToSentences(path);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+	
+	public static void testFileCreation() throws IOException {
+		File f = new File("data/reuters/test.txt");
+		f.createNewFile();
 	}
 	
 	public static void print (Object obj) {
