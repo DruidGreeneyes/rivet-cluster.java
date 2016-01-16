@@ -3,18 +3,16 @@ package rivet.core.hashlabels;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import org.apache.commons.lang.ArrayUtils;
 
-import rivet.util.Counter;
 import rivet.util.Util;
 import scala.Tuple2;
 import testing.Log;
 
 public final class HashLabels {
-	@SuppressWarnings("unused")
+	//@SuppressWarnings("unused")
 	private static final Log log = new Log("test/hashLabelsOutput.txt");
 	
 	private HashLabels(){}
@@ -50,10 +48,10 @@ public final class HashLabels {
 		return Util.shuffleList(l, seed);
 	}
 	
-	public static SortedSet<Integer> makeIndices (final Integer size, final Integer k, final Long seed) {
+	public static Set<Integer> makeIndices (final Integer size, final Integer k, final Long seed) {
 		return Util.randInts(size, k, seed)
 				.boxed()
-				.collect((Collectors.toCollection(TreeSet::new)));
+				.collect(Collectors.toSet());
 	}
 	
 	public static Long makeSeed (final String word) {
@@ -78,14 +76,13 @@ public final class HashLabels {
 	}
 	
 	public static Tuple2<int[], int[]> generatePermutations (int size) {
-		int[] base = Util.range(size).toArray();
-		int[] permutation = Util.randInts(0, size, 0L)
-									.distinct()
-									.limit(size)
+		int[] permutation = Util.randInts(size, size, 0L)
 									.toArray();
-		int[] inverse = base.clone();
-		for (int i : inverse)
-			i = base[permutation[i]];
+		log.log(Arrays.stream(permutation).boxed().collect(Collectors.toList()));
+		int[] inverse = new int[size];
+		for (int i = 0; i < size; i++)
+			inverse[i] = ArrayUtils.indexOf(permutation, i);
+		log.log(Arrays.stream(inverse).boxed().collect(Collectors.toList()));
 		return Tuple2.apply(permutation, inverse);
 	}
 }

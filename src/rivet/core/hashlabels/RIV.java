@@ -3,10 +3,9 @@ package rivet.core.hashlabels;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
-import java.util.TreeMap;
-import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
@@ -15,7 +14,7 @@ import rivet.util.Util;
 import scala.Tuple2;
 import testing.Log;
 
-public class RIV extends TreeMap<Integer, Double> {
+public class RIV extends HashMap<Integer, Double> {
 	private static final long serialVersionUID = 7549131075767220565L;
 	/**
 	 * 
@@ -39,7 +38,7 @@ public class RIV extends TreeMap<Integer, Double> {
 	
 	public RIV (final Set<Integer> keys, final Collection<Double> values, final Integer size, final Integer k) {
 		this(size, k);
-		final List<Integer> ks = keys.stream().sorted().collect(Collectors.toList());
+		final List<Integer> ks = new ArrayList<>(keys);
 		final List<Double> vs = new ArrayList<>(values);
 		Util.range(ks.size())
 				.forEach((i) -> this.put(ks.get(i), vs.get(i)));
@@ -107,10 +106,13 @@ public class RIV extends TreeMap<Integer, Double> {
 	public int[] valArray () { return this.values().stream().mapToInt(x -> x.intValue()).toArray(); }
 	
 	private RIV permuteLoop (int[] permutation, int times) {
+		log.log("Permuting -- permutation: %s, times: %s",
+				stream(permutation).boxed().collect(Collectors.toList()),
+				times);
 		int[] keys = this.keyArray();
 		for (int i = 0; i < times; i++)
-			for (int key : keys)
-				key = permutation[key];
+			for (int c = 0; c < keys.length; c++)
+				keys[c] = permutation[keys[c]];
 		return new RIV(
 				stream(keys).boxed().collect(Collectors.toSet()),
 				this.values(),

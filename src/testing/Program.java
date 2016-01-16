@@ -18,7 +18,7 @@ public class Program {
 	
 	public static void main(final String[] args) throws IOException {
 		Instant t = Instant.now();
-		testPermutations();
+		testRDDOnlyProcessing();
 		log.log("Test Completed in %s", Util.timeSince(t));
 	}
 	
@@ -29,6 +29,7 @@ public class Program {
 		Tuple2<int[], int[]> permutations = HashLabels.generatePermutations(100);
 		RIV bigPlusOne = big.permute(permutations, 1);
 		print("big + 1: " + bigPlusOne.toString());
+		print(big.equals(bigPlusOne));
 		RIV bigMatch = bigPlusOne.permute(permutations, -1);
 		print("big: " + bigMatch.toString());
 		print(big.equals(bigMatch));
