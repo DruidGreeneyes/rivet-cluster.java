@@ -1,19 +1,18 @@
-package rivet.core;
+package rivet.core.hashlabels;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
-import java.util.SortedSet;
 import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
-import rivet.Util;
+import static java.util.Arrays.stream;
+import rivet.util.Util;
+import scala.Tuple2;
 import testing.Log;
 
 public class RIV extends TreeMap<Integer, Double> {
@@ -21,12 +20,14 @@ public class RIV extends TreeMap<Integer, Double> {
 	/**
 	 * 
 	 */
+	//@SuppressWarnings("unused")
 	private static final Log log = new Log("test/rivOutput.txt");
-	private final Properties props = new Properties();
+	private final Properties props;
 	
-	public RIV () { super(); }
+	public RIV () { super(); this.props = new Properties();}
 	public RIV (final RIV riv) {
 		super(riv);
+		this.props = new Properties();
 		this.props.put("Size", riv.getProperty("Size"));
 		this.props.put("K", riv.getProperty("K"));
 	}
@@ -84,11 +85,14 @@ public class RIV extends TreeMap<Integer, Double> {
 		this.merge(key, value, Double::sum);
 	}
 	public void mergePlus (final Entry<Integer, Double> e) {
+		//TODO This seems to throw NPEs unless I log or print e. Why!?
+		//log.log("mergePlus:" + e);
+		//log.logEmpty();
 		this.mergePlus(e.getKey(), e.getValue());
 	}
 	
 	public void mergeMinus (final Integer key, final Double value) {
-		final Double v = 0 - value;
+		final Double v = -value;
 		this.merge(key, v, Double::sum);
 	}
 	public void mergeMinus (final Entry<Integer, Double> e) {
@@ -99,61 +103,29 @@ public class RIV extends TreeMap<Integer, Double> {
 		this.put(e.getKey(), e.getValue());
 	}
 	
-	private SortedSet<Integer> permuteDown (final Long start, final Long end, final Set<Integer> keys, final Integer size) {
-		log.log("Permuting keys down from %d to %d:%n%s",
-				start,
-				end,
-				keys.toString());
-		Instant t = Instant.now();
-		Long i = start;
-		List<Integer> ks = new ArrayList<>(keys);
-		while (i > end) {
-			i--;
-			log.log("Current i = %d; calling dePermuteList.", i);
-			ks = Util.dePermuteIntList(ks, i, size);
-		}
-		log.log("permuteDown returns, %s elapsed:%n%s",
-				Util.timeSince(t),
-				ks.toString());
-		return new TreeSet<>(ks);
-	}
+	public int[] keyArray () { return this.keySet().stream().mapToInt(x -> x.intValue()).toArray(); }
+	public int[] valArray () { return this.values().stream().mapToInt(x -> x.intValue()).toArray(); }
 	
-	private SortedSet<Integer> permuteUp (final Long start, final Long end, final Set<Integer> keys, final Integer size) {
-		log.log("Permuting keys up from %d to %d:%n%s",
-				start,
-				end,
-				keys.toString());
-		Instant t = Instant.now();
-		Long i = start;
-		List<Integer> ks = new ArrayList<>(keys);
-		while (i < end) {
-			log.log("Current i = %d; calling permuteList.", i);
-			ks = Util.permuteIntList(ks, i, size);
-			i++;
-		}
-		log.log("permuteUp returns, %s elapsed:%n%s",
-				Util.timeSince(t),
-				ks.toString());
-		return new TreeSet<>(ks);
-	}
-	
-	public RIV permute (final Number start, final Number end) {
-		final Long s = start.longValue();
-		final Long e = end.longValue();
-		if (s - e == 0) return this;
-		final Set<Integer> res = (s < e)
-				? permuteUp(s, e, this.keySet(), this.getVectorSize())
-				: permuteDown(s, e, this.keySet(), this.getVectorSize());
+	private RIV permuteLoop (int[] permutation, int times) {
+		int[] keys = this.keyArray();
+		for (int i = 0; i < times; i++)
+			for (int key : keys)
+				key = permutation[key];
 		return new RIV(
-				res,
+				stream(keys).boxed().collect(Collectors.toSet()),
 				this.values(),
 				this.getVectorSize(),
 				this.getVectorK());
 	}
 	
-	public RIV permuteFromZero (final Number times) { return permute(0, times); }
-	public RIV permuteToZero (final Number times) { return permute(times, 0); }
-	
+	public RIV permute (Tuple2<int[], int[]> permutations, int times) {
+		return (times == 0)
+				? this
+						: (times > 0)
+						? permuteLoop(permutations._1, times)
+								: permuteLoop(permutations._2, -times);
+	}
+
 	public Double magnitude () {
 		return Math.sqrt(
 				this.values()
@@ -166,8 +138,7 @@ public class RIV extends TreeMap<Integer, Double> {
 		final Double mag = this.magnitude();
 		final List<Double> vals = this.values()
 								.parallelStream()
-								.mapToDouble((v) -> v / mag)
-								.boxed()
+								.map((v) -> v / mag)
 								.collect(Collectors.toList());
 		return new RIV(
 				this.keySet(),

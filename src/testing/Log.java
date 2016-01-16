@@ -10,7 +10,7 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 
-import rivet.Util;
+import rivet.util.Util;
 
 public class Log implements Closeable {
 	private PrintStream stream;
@@ -20,14 +20,14 @@ public class Log implements Closeable {
 		try {
 		Files.deleteIfExists(dest);
 		Files.createFile(dest);
-		stream = new PrintStream(dest.toString());		
+		this.stream = new PrintStream(dest.toString());		
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 	
 	public void log (String string) {
-		stream.format("%s: %s%n", Instant.now().toString(), string);
+		this.stream.format("%s: %s%n", Instant.now().toString(), string);
 	}
 	
 	public void log (Object obj) {
@@ -49,16 +49,10 @@ public class Log implements Closeable {
 			i, c, (i/ c) * 100, Util.parseTimeString(et.toString()), Util.parseTimeString(rt.toString()));
 	}
 	
-	public <N extends Number> void logTimeEntry (Instant start, N index) {
-		Instant n = Instant.now();
-		long i = index.longValue();
-		Duration et = Duration.between(start, n);
-		log("Item %d                %s elapsed",
-				i, Util.parseTimeString(et.toString()));
-	}
+	public void logEmpty() {stream.print("");}
 
 	@Override
 	public void close() throws IOException {
-		stream.close();
+		this.stream.close();
 	}
 }
