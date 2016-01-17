@@ -3,6 +3,7 @@
   <groupId>rivet.java</groupId>
   <artifactId>rivet.java</artifactId>
   <version>0.0.1-SNAPSHOT</version>
+  <packaging>jar</packaging>
   <build>
     <sourceDirectory>src</sourceDirectory>
     <plugins>

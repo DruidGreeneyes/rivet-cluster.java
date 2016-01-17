@@ -14,5 +14,5 @@
 #*
 .#*
 /db
-/bin/
-/test/*
+/bin
+/test
