@@ -1,4 +1,4 @@
-CPBASE=".../.m2/repository"
+CPBASE="/home/ubuntu/.m2/repository"
 
 CLASSPATH="target/classes:\
 $CPBASE/org/apache/spark/spark-core_2.11/1.6.0/spark-core_2.11-1.6.0.jar:\
