@@ -19,10 +19,11 @@ import scala.Tuple2;
 
 public class Program {
 	public static final Log log = new Log("test/programOutput.txt");
+	public static String path = "data/reuters";
 	
 	public static void main(final String[] args) throws IOException {
 		Instant t = Instant.now();
-		testRDDOnlyProcessing();
+		testRDDOnlyProcessing((args.length>0)?args[0]:path);
 		log.log("Test Completed in %s", Util.timeSince(t));
 	}
 	
@@ -53,9 +54,8 @@ public class Program {
 		f.createNewFile();
 	}
 	
-	public static void testRDDOnlyProcessing() throws IOException {
+	public static void testRDDOnlyProcessing(String path) throws IOException {
 		String word = "large";
-		String path = "data/reuters";
 		try (JavaSparkContext jsc= Spark.newJSC(
 				"local[3]", 
 				setting("spark.driver.memory", "4g"),
