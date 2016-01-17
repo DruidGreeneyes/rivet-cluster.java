@@ -65,6 +65,18 @@ public final class Util {
 				.mapToObj(lis::get)
 				.collect(toList());
 	}
+	public static int[] shuffleIntArray(final int[] arr, final Long seed) {
+		final int size = arr.length;
+		return randInts(size, size, seed)
+				.map((i) -> arr[i])
+				.toArray();
+	}
+	public static double[] shuffleDoubleArray(final double[] arr, final Long seed) {
+		final int size = arr.length;
+		return randInts(size, size, seed)
+				.mapToDouble((i) -> arr[i])
+				.toArray();
+	}
 	
 	public static IntStream randInts (final Integer bound, final Integer length, final Long seed) {
 		return new Random(seed).ints(0, bound).distinct().limit(length);

@@ -11,11 +11,11 @@ import rivet.util.Util;
 import scala.Tuple2;
 import testing.Log;
 
-public final class HashLabels {
+public final class Labels {
 	//@SuppressWarnings("unused")
 	private static final Log log = new Log("test/hashLabelsOutput.txt");
 	
-	private HashLabels(){}
+	private Labels(){}
 	
 	public static Double dotProduct (final RIV labelA, final RIV labelB) {
 		return Util.getMatchingKeys(labelA, labelB)

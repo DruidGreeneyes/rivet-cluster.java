@@ -6,10 +6,14 @@ import java.io.File;
 import java.io.IOException;
 import java.time.Instant;
 
+import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaSparkContext;
+
 import rivet.cluster.spark.FileProcessor;
-import rivet.cluster.spark.SparkClient;
-import rivet.core.hashlabels.HashLabels;
-import rivet.core.hashlabels.RIV;
+import rivet.cluster.spark.Spark;
+import rivet.cluster.spark.WordLexicon;
+import rivet.core.arraylabels.Labels;
+import rivet.core.arraylabels.RIV;
 import rivet.util.Util;
 import scala.Tuple2;
 
@@ -24,9 +28,9 @@ public class Program {
 	
 	public static void testPermutations() {
 		print("Testing random permutations...");
-		RIV big = HashLabels.generateLabel(100, 10, "big");
+		RIV big = Labels.generateLabel(100, 10, "big");
 		print("big: " + big.toString());
-		Tuple2<int[], int[]> permutations = HashLabels.generatePermutations(100);
+		Tuple2<int[], int[]> permutations = Labels.generatePermutations(100);
 		RIV bigPlusOne = big.permute(permutations, 1);
 		print("big + 1: " + bigPlusOne.toString());
 		print(big.equals(bigPlusOne));
@@ -51,23 +55,21 @@ public class Program {
 	
 	public static void testRDDOnlyProcessing() throws IOException {
 		String word = "large";
-		String path = "data/enron/sentence";
-		try (SparkClient client = new SparkClient(
-				"test",
+		String path = "data/reuters";
+		try (JavaSparkContext jsc= Spark.newJSC(
 				"local[3]", 
 				setting("spark.driver.memory", "4g"),
 				setting("spark.executor.memory", "3g"))) {
-			print("SparkClient initialized.");
-			RIV lex = client.getOrMakeWordLex(word);
-			print("Lex for word '%s': %s", word, lex);
+			print("SparkContext initialized.");
+			WordLexicon lexicon = new WordLexicon(jsc, "test");
 			print("Clearing database 'test'...");
-			print(client.clear().count());
+			print(lexicon.clear().count());
 			print("Training lexicon from text files in folder: %s", path);
-			client.trainWordsFromSentenceBatch(path);
-			RIV lex2 = client.getOrMakeWordLex(word);
+			JavaPairRDD<String, String> texts = jsc.wholeTextFiles(path);
+			lexicon.trainWordsFromSentenceBatch(texts);
+			RIV lex2 = lexicon.getOrMakeLex(word);
 			print("Lex for word '%s': %s", word, lex2);
-			print("Are lexes equal? " + lex.equals(lex2));
-			client.write();
+			lexicon.write();
 		} catch (Exception e) {
 			print(e.getMessage());
 			for (StackTraceElement x : e.getStackTrace())

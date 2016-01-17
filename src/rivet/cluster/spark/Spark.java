@@ -1,5 +1,7 @@
 package rivet.cluster.spark;
 
+import static java.util.Arrays.stream;
+
 import java.util.Map;
 import java.util.Optional;
 
@@ -8,14 +10,26 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaSparkContext;
 
-import rivet.core.hashlabels.HashLabels;
-import rivet.core.hashlabels.RIV;
+import rivet.core.arraylabels.Labels;
+import rivet.core.arraylabels.RIV;
 import rivet.persistence.hbase.HBase;
 import rivet.util.Util;
 import scala.Tuple2;
 
-public class Spark {	
+public class Spark {
+	
+	
+	@SafeVarargs
+	public static JavaSparkContext newJSC(final String master, Tuple2<String, String>...settings) {
+		final SparkConf sparkConf = new SparkConf()
+				.setAppName("Rivet")
+				.setMaster(master);
+		stream(settings).forEach((entry) -> sparkConf.set(entry._1, entry._2));
+		return new JavaSparkContext(sparkConf);
+	}
+	
 	public static final Tuple2<Optional<?>, Optional<?>> EMPTY_ENTRY = 
 			Tuple2.apply(Optional.empty(), Optional.empty());
 	
@@ -51,15 +65,13 @@ public class Spark {
 			return entry._1.get();
 		
 		Row row = entry._1.orElse(new Row());
-		Optional<RIV> oldRIV = Optional.ofNullable(row.get("lex")).map(RIV::new);
+		Optional<RIV> oldRIV = Optional.ofNullable(row.get("lex")).map(RIV::fromString);
 		RIV newRIV = Util.mergeOptions(
 					entry._2,
 					oldRIV,
-					HashLabels::addLabels)
+					Labels::addLabels)
 				.orElseThrow(IndexOutOfBoundsException::new);	
 		row.put("lex", newRIV.toString());
 		return row;
 	}
-	
-	
 }

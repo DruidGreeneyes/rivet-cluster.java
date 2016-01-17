@@ -88,6 +88,7 @@ public class FileProcessor implements Closeable {
 						.map((str) -> acronyms1.matcher(str).replaceAll("$1"))
 						.map((str) -> acronyms2.matcher(str).replaceAll("$1"))
 						.flatMap((str) -> paots.splitAsStream(str))
+						.map((str) -> str.replace(".", ""))
 						.filter(oneWordLine)
 						.collect(Collectors.joining("\n"));
 		} catch (IOException e) {

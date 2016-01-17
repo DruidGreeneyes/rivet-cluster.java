@@ -138,15 +138,7 @@ public class RIV extends HashMap<Integer, Double> {
 	
 	public RIV normalize () {
 		final Double mag = this.magnitude();
-		final List<Double> vals = this.values()
-								.parallelStream()
-								.map((v) -> v / mag)
-								.collect(Collectors.toList());
-		return new RIV(
-				this.keySet(),
-				vals,
-				this.getVectorSize(),
-				this.getVectorK());
+		return this.divideBy(mag);
 	}
 	
 	public RIV subtract (RIV riv) {
@@ -155,7 +147,7 @@ public class RIV extends HashMap<Integer, Double> {
 		return result;
 	}
 	
-	public RIV divideBy (Long num) {
+	public RIV divideBy (double num) {
 		List<Double> newVals = this.values()
 								.parallelStream()
 								.map((val) -> val / num)

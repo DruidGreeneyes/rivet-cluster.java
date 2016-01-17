@@ -50,6 +50,12 @@ public class Log implements Closeable {
 	}
 	
 	public void logEmpty() {stream.print("");}
+	public <T> void logArray(T[] arr) {
+		StringBuilder s = new StringBuilder();
+		for (T t : arr)
+			s.append(t.toString() + " ");
+		log(s.toString());
+	}
 
 	@Override
 	public void close() throws IOException {
