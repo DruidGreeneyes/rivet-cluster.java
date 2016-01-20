@@ -115,6 +115,6 @@ public final class REPL {
 		return s.toString();
 	}
 	
-	private static Tuple2<String, Boolean> trueResult(String res) {return Tuple2.apply(res, true);}
-	private static Tuple2<String, Boolean> falseResult(String res) {return Tuple2.apply(res, false);} 
+	private static Tuple2<String, Boolean> trueResult(String res) {return new Tuple2<>(res, true);}
+	private static Tuple2<String, Boolean> falseResult(String res) {return new Tuple2<>(res, false);} 
 }

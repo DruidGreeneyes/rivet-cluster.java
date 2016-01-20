@@ -19,16 +19,14 @@ public final class MethodIndex {
 	private static final String SPARK_CONF = "conf/spark.conf";
 	private static final Tuple2<String, String>[] loadSettings(String path) throws IOException {
 		List<String> lines = Files.readAllLines(Paths.get(path));
-		System.out.println(lines);
 		Tuple2<String, String>[] res = (Tuple2<String, String>[]) new Tuple2[lines.size()];
-		Stream<String> condensedLines = lines.stream()
-										.map((l) -> l.replaceAll("\\s+", ""));
-		Stream<String[]> splitLines = condensedLines.map((l) -> l.split(":"));
-		Stream<String[]> filteredLines = splitLines.filter((l) -> l.length == 2);
-		Stream<Tuple2<String, String>> settingStream = 	filteredLines.map((l) -> Tuple2.apply(l[0], l[1]));
-		List<Tuple2<String, String>> settingList = settingStream.collect(Collectors.toList());
-		System.out.println(settingList);
-		settingList.toArray(res);
+		lines.stream()
+			.map((l) -> l.replaceAll("\\s+", ""))
+			.map((l) -> l.split(":", 2))
+			.filter((l) -> l.length == 2)
+			.map((l) -> new Tuple2<>(l[0], l[1]))
+			.collect(Collectors.toList())
+			.toArray(res);
 		for (Tuple2<String, String> setting : res)
 			System.out.print(setting.toString() + " ");
 		return res;

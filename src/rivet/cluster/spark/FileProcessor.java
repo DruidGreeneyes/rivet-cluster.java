@@ -82,7 +82,7 @@ public class FileProcessor implements Closeable {
 			Pattern paots = Pattern.compile("(?<=(\\S)\\.{1,3}(\"?))\\s+(?=(\"?[A-Z]))");
 			Predicate<String> oneWordLine = Pattern.compile("^\\s*\\w+\\s*$").asPredicate().negate();
 			return bodyBlocks.splitAsStream(br.lines().map(String::trim).collect(Collectors.joining(" ")))
-						.map((str) -> Tuple2.apply(c.inc(), str))
+						.map((str) -> new Tuple2<>(c.inc(), str))
 						.filter((e) -> e._1 % 2 == 0)
 						.map(Tuple2::_2)
 						.map((str) -> acronyms1.matcher(str).replaceAll("$1"))

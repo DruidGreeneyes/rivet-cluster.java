@@ -83,6 +83,6 @@ public final class Labels {
 		for (int i = 0; i < size; i++)
 			inverse[i] = ArrayUtils.indexOf(permutation, i);
 		log.log(Arrays.stream(inverse).boxed().collect(Collectors.toList()));
-		return Tuple2.apply(permutation, inverse);
+		return new Tuple2<>(permutation, inverse);
 	}
 }

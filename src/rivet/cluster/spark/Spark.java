@@ -31,7 +31,7 @@ public class Spark {
 	}
 	
 	public static final Tuple2<Optional<?>, Optional<?>> EMPTY_ENTRY = 
-			Tuple2.apply(Optional.empty(), Optional.empty());
+			new Tuple2<>(Optional.empty(), Optional.empty());
 	
 	public static SparkConf newSparkConf(String master, Map<String, String> settings) {
 		SparkConf res = new SparkConf().setAppName("Rivet")
@@ -44,18 +44,18 @@ public class Spark {
 			Tuple2<ImmutableBytesWritable, Result> entry) {
 		String key = HBase.ibwToString(entry._1);
 		Row val = new Row(entry._2);
-		return Tuple2.apply(key, val);
+		return new Tuple2<>(key, val);
 	}
 	
 	public static Tuple2<ImmutableBytesWritable, Put> prepareEntryForStorage(
 			Tuple2<String, Row> entry) {
 		ImmutableBytesWritable key = HBase.stringToIBW(entry._1);
 		Put val = HBase.newPut(key, entry._2);
-		return Tuple2.apply(key, val);
+		return new Tuple2<>(key, val);
 	}
 	
 	public static <R> Tuple2<ImmutableBytesWritable, R> keyToIBW(Tuple2<String, R> entry) {
-		return Tuple2.apply(
+		return new Tuple2<>(
 				new ImmutableBytesWritable(Bytes.toBytes(entry._1)),
 				entry._2);
 	}

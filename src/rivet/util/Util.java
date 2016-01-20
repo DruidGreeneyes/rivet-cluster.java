@@ -33,7 +33,7 @@ public final class Util {
 	}
 	
 	public static Tuple2<String, String> setting(String key, String val) {
-		return Tuple2.apply(key, val);
+		return new Tuple2<>(key, val);
 	}
 	
 	public static <T> Optional<T> mergeOptions(Optional<T> optA, Optional<T> optB, BiFunction<T, T, T> mergeFunction) {
@@ -96,7 +96,7 @@ public final class Util {
 	
 	public static IntStream butCenter (final IntStream s, final Integer radius) {		
 		Counter c = new Counter();
-		return s.mapToObj(i -> Tuple2.apply(i, c.inc()))
+		return s.mapToObj(i -> new Tuple2<>(i, c.inc()))
 				.filter(e -> (e._2 < radius || e._2 > c.get() - radius))
 				.mapToInt(Tuple2::_1);
 	}

@@ -20,7 +20,7 @@ public class Labels {
 	}
 	
 	public static Stream<Tuple2<Double, Double>> getMatchingValStream (final RIV labelA, final RIV labelB) {
-		return labelA.keyStream().filter(labelB::contains).mapToObj((i) -> Tuple2.apply(labelA.get(i), labelB.get(i)));
+		return labelA.keyStream().filter(labelB::contains).mapToObj((i) -> new Tuple2<>(labelA.get(i), labelB.get(i)));
 	}
 	
 	public static double dotProduct (final RIV labelA, final RIV labelB) {
@@ -66,6 +66,6 @@ public class Labels {
 		int[] inverse = new int[size];
 		for (int i = 0; i < size; i++)
 			inverse[i] = ArrayUtils.indexOf(permutation, i);
-		return Tuple2.apply(permutation, inverse);
+		return new Tuple2<>(permutation, inverse);
 	}
 }

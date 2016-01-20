@@ -40,7 +40,7 @@ public class WordLexicon extends Lexicon {
 				text.flatMapToPair(trainer)
 					.reduceByKey(Labels::addLabels);
 		this.rdd = this.rdd.fullOuterJoin(lexes)
-				.mapValues((v) -> Tuple2.apply(
+				.mapValues((v) -> new Tuple2<>(
 						Util.gOptToJOpt(v._1),
 						Util.gOptToJOpt(v._2)))
 				.mapValues((v) -> Spark.mergeJoinEntry(v));
@@ -55,7 +55,7 @@ public class WordLexicon extends Lexicon {
 				texts.flatMapToPair(trainer)
 					.reduceByKey(Labels::addLabels);
 		this.rdd = this.rdd.fullOuterJoin(lexes)
-						.mapValues((v) -> Tuple2.apply(
+						.mapValues((v) -> new Tuple2<>(
 								Util.gOptToJOpt(v._1),
 								Util.gOptToJOpt(v._2)))
 						.mapValues((v) -> Spark.mergeJoinEntry(v));
@@ -64,7 +64,7 @@ public class WordLexicon extends Lexicon {
 	
 	private static Tuple2<String, RIV> getContextRIV (final List<String> tokens, final Integer index, final Integer size, final Integer k, final Integer cr) {
 		final Integer count = tokens.size();
-		return Tuple2.apply(
+		return new Tuple2<>(
 				tokens.get(index), 
 				Util.butCenter(Util.rangeNegToPos(cr), cr)
 					.filter(n -> 0 <= n && n < count)
@@ -100,7 +100,7 @@ public class WordLexicon extends Lexicon {
 					.map((word) -> getInd(size, k, word))
 					.reduce(new RIV(size), Labels::addLabels);
 		return Arrays.stream(sentence)
-				.map((word) -> Tuple2.apply(
+				.map((word) -> new Tuple2<>(
 						word,
 						sum.subtract(getInd(size, k, word))));
 	}
@@ -114,7 +114,7 @@ public class WordLexicon extends Lexicon {
 						getInd(size, k, context[i])
 							.permute(permutations, i - index))
 					.reduce(new RIV(size), Labels::addLabels);
-		return Tuple2.apply(context[index], riv);
+		return new Tuple2<>(context[index], riv);
 	}
 	
 	private static Stream<Tuple2<String, RIV>> getPermutedSentenceRIVs (final String[] sentence, final Integer size, final Integer k, Tuple2<int[], int[]> permutations) {

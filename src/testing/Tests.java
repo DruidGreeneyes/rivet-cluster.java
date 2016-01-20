@@ -23,18 +23,26 @@ import scala.Tuple2;
 
 public class Tests {
 	public static final Log log = new Log("test/programOutput.txt");
+	public static String conf = "conf/spark.conf";
 	public static String path = "data/reuters";
 	
 	public static void main(final String[] args) throws IOException {
 		Instant t = Instant.now();
-		testRepl(args);
-		//testRDDOnlyProcessing((args.length>0)?args[0]:path);
+		String[] a = new String[]{"train", "words", "test", "data/reuters"};
+		testRepl(a);
 		log.log("Test Completed in %s", Util.timeSince(t));
 	}
 	
 	public static void testRepl(String[] args) {
 		print("Calling repl...");
 		REPL.main(args);
+	}
+	
+	public static void testClusterMode() throws IOException {
+		try (Client client = Spark.newClient("spark://josh-B14:7077")) {
+			WordLexicon lexicon = client.openWordLexicon("test");
+			lexicon.uiTrain(path, client);
+		}
 	}
 	
 	public static void testPermutations() {
@@ -92,7 +100,7 @@ public class Tests {
 				"local[3]",
 				setting("spark.driver.memory", "4g"),
 				setting("spark.executor.memory", "3g"))) {
-			WordLexicon lexicon = client.openWordLexicon("otherTest");			
+			WordLexicon lexicon = client.openWordLexicon("otherTest");		
 		}
 	}
 	
