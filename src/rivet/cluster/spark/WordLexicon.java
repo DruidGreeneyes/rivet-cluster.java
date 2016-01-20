@@ -1,5 +1,6 @@
 package rivet.cluster.spark;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -7,6 +8,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
 
@@ -30,6 +32,21 @@ public class WordLexicon extends Lexicon {
 	}
 	
 	//Training
+	public WordLexicon trainer (
+			final JavaRDD<String> text,
+			final PairFlatMapFunction<String, String, RIV> trainer) {
+		log.log("Processing File: %d lines", text.count());
+		final JavaPairRDD<String, RIV> lexes = 
+				text.flatMapToPair(trainer)
+					.reduceByKey(Labels::addLabels);
+		this.rdd = this.rdd.fullOuterJoin(lexes)
+				.mapValues((v) -> Tuple2.apply(
+						Util.gOptToJOpt(v._1),
+						Util.gOptToJOpt(v._2)))
+				.mapValues((v) -> Spark.mergeJoinEntry(v));
+		return this;
+	}
+	
 	public WordLexicon batchTrainer (
 			final JavaPairRDD<String, String> texts, 
 			final PairFlatMapFunction<Tuple2<String, String>, String, RIV> trainer) {
@@ -127,5 +144,46 @@ public class WordLexicon extends Lexicon {
 				tokenizedTexts,
 				(textEntry) -> 
 					breakAndGetSentenceRIVs(textEntry, size, k));
+	}
+	
+	public WordLexicon trainWordsFromSentenceFile (final JavaRDD<String> text) throws IOException {
+		final Integer size = this.getSize();
+		final Integer k = this.getK();
+		Tuple2<int[], int[]> permutations = Labels.generatePermutations(size);
+		return this.trainer(text,
+				(line) ->
+					getPermutedSentenceRIVs(line.split("\\s+"), size, k, permutations)
+					.collect(Collectors.toList()));
+	}
+	
+	public String uiTrain(String path, JavaSparkContext jsc) {
+		File file = new File(path);
+		if (file.isDirectory()){
+			JavaPairRDD<String, String> texts = jsc.wholeTextFiles(path);
+			long fileCount = texts.count();
+			long startCount = this.count();
+			try {
+				this.trainWordsFromSentenceBatch(texts);
+			} catch (IOException e) {
+				e.printStackTrace();
+				return e.getMessage();
+			}
+			long wordsAdded = this.count() - startCount;
+			return String.format("Batch training complete. %d files processed, %d words added to lexicon.",
+									fileCount, wordsAdded);
+		} else {
+			JavaRDD<String> text = jsc.textFile(path);
+			long lineCount = text.count();
+			long startCount = this.count();
+			try {
+				this.trainWordsFromSentenceFile(text);
+			} catch (IOException e) {
+				e.printStackTrace();
+				return e.getMessage();
+			}
+			long wordsAdded = this.count() - startCount;
+			return String.format("Batch training complete. %d files processed, %d words added to lexicon.",
+									lineCount, wordsAdded);
+		}
 	}
 }

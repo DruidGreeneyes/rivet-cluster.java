@@ -4,6 +4,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang.ArrayUtils;
+import org.apache.hadoop.hbase.util.Bytes;
 
 import rivet.util.Util;
 import scala.Tuple2;
@@ -28,7 +29,9 @@ public class Labels {
 				.sum();
 	}
 	
-	public static RIV addLabels(final RIV labelA, final RIV labelB) { return labelA.add(labelB); }
+	public static RIV addLabels(final RIV labelA, final RIV labelB) {
+		log.log("Labels.addLabels called with\n" + labelA.toString() + "\n" + labelB.toString());
+		return labelA.add(labelB); }
 	
 	public static double[] makeVals (final int count, long seed) {
 		double[] l = new double[count];
@@ -41,8 +44,15 @@ public class Labels {
 		return Util.randInts(size, count, seed).toArray();
 	}
 	
+	public static Long makeSeed (final String word) {
+		return word.chars()
+				.boxed()
+				.mapToLong((x) -> x.longValue() * (10 ^ (word.indexOf(x))))
+				.sum();
+	}
+	
 	public static RIV generateLabel (final int size, final int k, final String word) {
-		final long seed = word.hashCode();
+		final long seed = makeSeed(word);
 		final int j = (k % 2 == 0) ? k : k + 1;
 		return new RIV(
 				makeIndices(size, j, seed),

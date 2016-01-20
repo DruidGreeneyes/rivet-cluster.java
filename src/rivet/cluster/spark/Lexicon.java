@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.function.Function;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
@@ -45,7 +46,9 @@ public abstract class Lexicon {
 	protected JavaPairRDD<String, Row> rdd;
 	
 	//constructor
-	public Lexicon (final JavaSparkContext jsc, final String hbaseTableName) {
+	public Lexicon (final JavaSparkContext jsc, final String hbaseTableName) throws TableNotFoundException, IOException {
+		if (!HBase.tableExists(hbaseTableName)) 
+			throw new TableNotFoundException("Table not found and not created: " + hbaseTableName);
 		this.rdd = jsc.newAPIHadoopRDD(
 				HBase.newConf(hbaseTableName),
 				TableInputFormat.class,
@@ -127,8 +130,6 @@ public abstract class Lexicon {
 		return getMeanVector(this.rdd);
 	}
 	
-	
-	
 	//Static and random utility stuff
 	public static RIV getMeanVector(JavaPairRDD<String, Row> lexicon) {
 		final Long count = lexicon.count();
@@ -140,4 +141,7 @@ public abstract class Lexicon {
 				.reduce(Labels::addLabels)
 				.divideBy(count);
 	}
+	
+	//Abstracts
+	public abstract String uiTrain(String path, JavaSparkContext jsc);
 }

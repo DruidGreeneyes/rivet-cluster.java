@@ -10,7 +10,13 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Admin;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
@@ -27,6 +33,26 @@ import static rivet.util.Util.setting;
 
 public class HBase {
 	public static final byte[] DATA_COLUMN_FAMILY = stringToBytes("data");
+	
+	private static HTableDescriptor newTableDescriptor(TableName name) {
+		return new HTableDescriptor(name)
+				.addFamily(
+						new HColumnDescriptor(
+								DATA_COLUMN_FAMILY));
+	}
+	
+	public static boolean tableExists(String tableName) throws IOException {
+		try (Connection conn = ConnectionFactory.createConnection()) {
+			Admin admin = conn.getAdmin();
+			TableName tn = TableName.valueOf(tableName);
+			if (admin.tableExists(tn)) return true;
+			System.console().format("Table '%s' does not exist. Create it? (y/n)" , tableName);
+			String input = System.console().readLine().toLowerCase();
+			if (input == "n") return false;
+			admin.createTable(newTableDescriptor(tn));
+			return true;
+		}
+	}
 	
 	public static Cell newCell(ImmutableBytesWritable row, String column, String value) {
 		return CellUtil.createCell(

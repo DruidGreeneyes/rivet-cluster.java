@@ -5,26 +5,36 @@ import static rivet.util.Util.setting;
 import java.io.File;
 import java.io.IOException;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 
 import rivet.cluster.spark.FileProcessor;
 import rivet.cluster.spark.Spark;
+import rivet.cluster.spark.Client;
 import rivet.cluster.spark.WordLexicon;
 import rivet.core.arraylabels.Labels;
 import rivet.core.arraylabels.RIV;
+import rivet.program.REPL;
 import rivet.util.Util;
 import scala.Tuple2;
 
-public class Program {
+public class Tests {
 	public static final Log log = new Log("test/programOutput.txt");
 	public static String path = "data/reuters";
 	
 	public static void main(final String[] args) throws IOException {
 		Instant t = Instant.now();
-		testRDDOnlyProcessing((args.length>0)?args[0]:path);
+		testRepl(args);
+		//testRDDOnlyProcessing((args.length>0)?args[0]:path);
 		log.log("Test Completed in %s", Util.timeSince(t));
+	}
+	
+	public static void testRepl(String[] args) {
+		print("Calling repl...");
+		REPL.main(args);
 	}
 	
 	public static void testPermutations() {
@@ -56,7 +66,7 @@ public class Program {
 	
 	public static void testRDDOnlyProcessing(String path) throws IOException {
 		String word = "large";
-		try (JavaSparkContext jsc= Spark.newJSC(
+		try (JavaSparkContext jsc= Spark.newClient(
 				"local[3]", 
 				setting("spark.driver.memory", "4g"),
 				setting("spark.executor.memory", "3g"))) {
@@ -74,6 +84,15 @@ public class Program {
 			print(e.getMessage());
 			for (StackTraceElement x : e.getStackTrace())
 					print(x.toString());
+		}
+	}
+	
+	public static void testHBaseTableCreation() throws IOException {
+		try (Client client = Spark.newClient(
+				"local[3]",
+				setting("spark.driver.memory", "4g"),
+				setting("spark.executor.memory", "3g"))) {
+			WordLexicon lexicon = client.openWordLexicon("otherTest");			
 		}
 	}
 	

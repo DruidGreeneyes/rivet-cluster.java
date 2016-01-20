@@ -22,12 +22,12 @@ public class Spark {
 	
 	
 	@SafeVarargs
-	public static JavaSparkContext newJSC(final String master, Tuple2<String, String>...settings) {
+	public static Client newClient(final String master, Tuple2<String, String>...settings) {
 		final SparkConf sparkConf = new SparkConf()
 				.setAppName("Rivet")
 				.setMaster(master);
 		stream(settings).forEach((entry) -> sparkConf.set(entry._1, entry._2));
-		return new JavaSparkContext(sparkConf);
+		return new Client(sparkConf);
 	}
 	
 	public static final Tuple2<Optional<?>, Optional<?>> EMPTY_ENTRY = 
