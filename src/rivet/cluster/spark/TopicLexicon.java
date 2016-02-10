@@ -10,7 +10,7 @@ public class TopicLexicon extends Lexicon {
 	}
 
 	@Override
-	public String uiTrain(String path, JavaSparkContext jsc) {
+	public String uiTrain(String path) {
 		// TODO Auto-generated method stub
 		return null;
 	}

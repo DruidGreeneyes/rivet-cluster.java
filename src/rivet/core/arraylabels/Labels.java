@@ -4,14 +4,10 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang.ArrayUtils;
-import org.apache.hadoop.hbase.util.Bytes;
-
 import rivet.util.Util;
 import scala.Tuple2;
-import testing.Log;
 
 public class Labels {
-	private static final Log log = new Log("test/labelsOutput.txt");
 	
 	private Labels(){}
 	
@@ -30,7 +26,6 @@ public class Labels {
 	}
 	
 	public static RIV addLabels(final RIV labelA, final RIV labelB) {
-		log.log("Labels.addLabels called with\n" + labelA.toString() + "\n" + labelB.toString());
 		return labelA.add(labelB); }
 	
 	public static double[] makeVals (final int count, long seed) {

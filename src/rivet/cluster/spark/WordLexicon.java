@@ -16,12 +16,11 @@ import rivet.core.arraylabels.RIV;
 import rivet.core.arraylabels.Labels;
 import rivet.util.Util;
 import scala.Tuple2;
-
 import testing.Log;
 
 
-public class WordLexicon extends Lexicon {	
-	private static final Log log = new Log("test/wordLexiconOutput.txt");
+public class WordLexicon extends Lexicon {
+	private Log log = new Log("test/wordLexiconOutput");
 
 	private Integer cr;
 	
@@ -35,7 +34,6 @@ public class WordLexicon extends Lexicon {
 	public WordLexicon trainer (
 			final JavaRDD<String> text,
 			final PairFlatMapFunction<String, String, RIV> trainer) {
-		log.log("Processing File: %d lines", text.count());
 		final JavaPairRDD<String, RIV> lexes = 
 				text.flatMapToPair(trainer)
 					.reduceByKey(Labels::addLabels);
@@ -50,7 +48,6 @@ public class WordLexicon extends Lexicon {
 	public WordLexicon batchTrainer (
 			final JavaPairRDD<String, String> texts, 
 			final PairFlatMapFunction<Tuple2<String, String>, String, RIV> trainer) {
-		log.log("Processing Files: %d files", texts.count());
 		final JavaPairRDD<String, RIV> lexes = 
 				texts.flatMapToPair(trainer)
 					.reduceByKey(Labels::addLabels);
@@ -77,7 +74,6 @@ public class WordLexicon extends Lexicon {
 		final String text = textEntry._2;
 		final List<String> words = Arrays.asList(text.split("\\s+"));
 		final Integer count = words.size();
-		log.log("Processing file: %s    ----    %d words.", textEntry._1, count);
 		return Util.range(count)
 				.mapToObj((index) -> {
 					return getContextRIV(words, index, size, k, cr);
@@ -106,7 +102,6 @@ public class WordLexicon extends Lexicon {
 	}
 	
 	private static Tuple2<String, RIV> getPermutedContextRIV (final String[] context, final Integer index, final Integer size, final Integer k, Tuple2<int[], int[]> permutations) {
-		log.log("getting context RIV for " + context[index]);
 		final Integer count = context.length;
 		final RIV riv = Util.range(count)
 					.filter((i) -> !index.equals(i))
@@ -118,8 +113,6 @@ public class WordLexicon extends Lexicon {
 	}
 	
 	private static Stream<Tuple2<String, RIV>> getPermutedSentenceRIVs (final String[] sentence, final Integer size, final Integer k, Tuple2<int[], int[]> permutations) {
-		log.log("Processing sentence: %d words...", sentence.length);
-		log.logArray(sentence);
 		return Util.range(sentence.length)
 					.mapToObj((index) -> 
 						getPermutedContextRIV(sentence, index, size, k, permutations));
@@ -128,9 +121,7 @@ public class WordLexicon extends Lexicon {
 	private static List<Tuple2<String, RIV>> breakAndGetSentenceRIVs (final Tuple2<String, String> textEntry, final Integer size, final Integer k) throws IOException {
 		final String text = textEntry._2;
 		final List<String> sentences = Arrays.asList(text.split("\\n+"));
-		final Integer count = sentences.size();
 		final Tuple2<int[], int[]> permutations = Labels.generatePermutations(size);
-		log.log("Processing file: %s    ----    %d sentences.", textEntry._1, count);
 		return sentences.parallelStream()
 					.flatMap((sentence) -> 
 						getPermutedSentenceRIVs(sentence.split("\\s+"), size, k, permutations))
@@ -142,7 +133,7 @@ public class WordLexicon extends Lexicon {
 		final Integer k = this.getK();
 		return this.batchTrainer(
 				tokenizedTexts,
-				(textEntry) -> 
+				(textEntry) ->
 					breakAndGetSentenceRIVs(textEntry, size, k));
 	}
 	
@@ -156,10 +147,11 @@ public class WordLexicon extends Lexicon {
 					.collect(Collectors.toList()));
 	}
 	
-	public String uiTrain(String path, JavaSparkContext jsc) {
+	public String uiTrain(String path) {
 		File file = new File(path);
 		if (file.isDirectory()){
-			JavaPairRDD<String, String> texts = jsc.wholeTextFiles(path);
+			log.log("attempting to load filed in directory: %s", file.getAbsolutePath());
+			JavaPairRDD<String, String> texts = jsc.wholeTextFiles("file://" + file.getAbsolutePath());
 			long fileCount = texts.count();
 			long startCount = this.count();
 			try {
@@ -182,7 +174,7 @@ public class WordLexicon extends Lexicon {
 				return e.getMessage();
 			}
 			long wordsAdded = this.count() - startCount;
-			return String.format("Batch training complete. %d files processed, %d words added to lexicon.",
+			return String.format("Batch training complete. %d lines processed, %d words added to lexicon.",
 									lineCount, wordsAdded);
 		}
 	}

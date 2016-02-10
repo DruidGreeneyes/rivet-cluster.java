@@ -1,5 +1,6 @@
 package rivet.core.arraylabels;
 
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
@@ -15,10 +16,12 @@ import java.util.stream.Stream;
 import org.apache.commons.lang3.ArrayUtils;
 
 import scala.Tuple2;
-import testing.Log;
 
-public class RIV {
-	private static final Log log = new Log("test/rivOutput.txt");
+public class RIV implements Serializable{
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 7570655472298563946L;
 	//Values
 	private VectorElement[] points;
 	private final int size;
@@ -29,7 +32,7 @@ public class RIV {
 		this.size = riv.size;
 	}
 	public RIV(final int size) {this.points = new VectorElement[0]; this.size = size;}
-	public RIV(final VectorElement[] points, final int size) { this.points = points; this.size = size; }
+	public RIV(final VectorElement[] points, final int size) { this.points = points; this.size = size;}
 	public RIV(final int[] keys, final double[] vals, final int size) {
 		this.size = size;
 		int l = keys.length;
@@ -46,6 +49,8 @@ public class RIV {
 	
 	@Override
 	public String toString() {
+		//"(0|1) (1|3) (4|2) 5"
+		//"(I|V) (I|V) (I|V) Size"
 		StringBuilder s = new StringBuilder();
 		for (VectorElement p : this.points) 
 			s.append(p.toString() + " ");
@@ -68,11 +73,9 @@ public class RIV {
 	}
 	
 	private int binarySearch(VectorElement elt) {
-		log.log("RIV.binarySearch(Point) called with " + elt.toString());
 		return Arrays.binarySearch(this.points, elt, VectorElement::compare);
 	}
 	private int binarySearch(int index) {
-		log.log("RIV.binarySearch(index) called with " + index);
 		return this.binarySearch(VectorElement.partial(index)); 
 	}
 	
@@ -81,7 +84,6 @@ public class RIV {
 	}
 	
 	public VectorElement getPoint(int index) {
-		log.log("RIV.getPoint(index) called with " + index);
 		this.assertValidIndex(index);
 		int i = this.binarySearch(index);
 		return (i < 0)
@@ -93,7 +95,6 @@ public class RIV {
 	}
 	
 	private RIV validSet(int i, VectorElement elt) {
-		log.log("RIV.validSet(i, Point) called with " + i + ", " + elt.toString());
 		if (this.points.length == 0)
 			ArrayUtils.add(this.points, 0, elt);
 		else
@@ -104,7 +105,6 @@ public class RIV {
 		return this;
 	}
 	private RIV validSet(VectorElement elt) {
-		log.log("RIV.validSet(Point) called with " + elt.toString());
 		final int i = this.binarySearch(elt);
 		return this.validSet(
 				(i > 0) ? i : ~i,
@@ -117,12 +117,10 @@ public class RIV {
 	public RIV set(int index, double value) { return this.set(VectorElement.elt(index, value)); }
 	
 	private VectorElement addPoint(VectorElement elt) {
-		log.log("RIV.addPoint(Point) called with " + elt.toString());
 		this.assertValidIndex(elt.index());
 		return this.getPoint(elt.index()).add(elt);
 	}
 	public RIV add(VectorElement elt) {
-		log.log("RIV.add(Point) called with " + elt.toString());
 		return this.addPoint(elt)
 				.engage(this::validSet);
 	}
@@ -183,10 +181,9 @@ public class RIV {
 	}
 	
 	private RIV removeZeros () {
-		this.points = (VectorElement[])
-				this.stream()
-					.filter((elt) -> !elt.contains(0))
-					.toArray();
+		for (int i = this.points.length - 1; i >= 0; i--)
+			if (points[i].contains(0))
+				ArrayUtils.remove(this.points, i);
 		return this;
 	}
 	
@@ -225,10 +222,10 @@ public class RIV {
 	public static RIV fromString(String rivString) {
 		String[] r = rivString.split(" ");
 		int l = r.length - 1;
-		int size = Integer.parseInt(r[l + 1]);
-		VectorElement[] elts = new VectorElement[l];
-		for (int i = 0; i < l; i++)
-			elts[i] = VectorElement.fromString(r[i]);
+		int size = Integer.parseInt(r[l]);
+		VectorElement[] elts = new VectorElement[0];
+		for (String s : r)
+			ArrayUtils.add(elts, VectorElement.fromString(s));
 		return new RIV(elts, size);
 	}
 }

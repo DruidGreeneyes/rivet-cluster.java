@@ -26,12 +26,14 @@ import org.apache.hadoop.hbase.util.Bytes;
 import rivet.cluster.spark.Row;
 
 import scala.Tuple2;
+import testing.Log;
 
 import static java.util.Arrays.stream;
 import static rivet.util.Util.setting;
 
 
 public class HBase {
+	private static final Log log = new Log("test/hbaseOutput.txt");
 	public static final byte[] DATA_COLUMN_FAMILY = stringToBytes("data");
 	
 	private static HTableDescriptor newTableDescriptor(TableName name) {
@@ -46,11 +48,23 @@ public class HBase {
 			Admin admin = conn.getAdmin();
 			TableName tn = TableName.valueOf(tableName);
 			if (admin.tableExists(tn)) return true;
-			System.console().format("Table '%s' does not exist. Create it? (y/n)" , tableName);
+			System.out.format("Table '%s' does not exist. Create it? (y/n)" , tableName);
 			String input = System.console().readLine().toLowerCase();
 			if (input == "n") return false;
 			admin.createTable(newTableDescriptor(tn));
 			return true;
+		}
+	}
+	
+	public static boolean clearTable(String tableName) throws IOException {
+		log.log("Clearing table: " + tableName);
+		try (Connection conn = ConnectionFactory.createConnection()) {
+			Admin admin = conn.getAdmin();
+			TableName tn = TableName.valueOf(tableName);
+			admin.disableTable(tn);
+			admin.deleteTable(tn);
+			admin.createTable(newTableDescriptor(tn));
+			return tableExists(tableName);
 		}
 	}
 	

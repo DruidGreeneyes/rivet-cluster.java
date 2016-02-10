@@ -5,15 +5,11 @@ import static rivet.util.Util.setting;
 import java.io.File;
 import java.io.IOException;
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
-
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 
 import rivet.cluster.spark.FileProcessor;
 import rivet.cluster.spark.Spark;
-import rivet.cluster.spark.Client;
 import rivet.cluster.spark.WordLexicon;
 import rivet.core.arraylabels.Labels;
 import rivet.core.arraylabels.RIV;
@@ -39,9 +35,9 @@ public class Tests {
 	}
 	
 	public static void testClusterMode() throws IOException {
-		try (Client client = Spark.newClient("spark://josh-B14:7077")) {
-			WordLexicon lexicon = client.openWordLexicon("test");
-			lexicon.uiTrain(path, client);
+		try (JavaSparkContext jsc = new JavaSparkContext(Spark.newSparkConf(setting("master", "spark://josh-B14:7077")))) {
+			WordLexicon lexicon = Spark.openWordLexicon(jsc, "test");
+			lexicon.uiTrain(path);
 		}
 	}
 	
@@ -58,15 +54,6 @@ public class Tests {
 		print(big.equals(bigMatch));
 	}
 	
-	public static void testSGMLProcessing() {
-		String path = "data/reuters";
-		try (FileProcessor fp = new FileProcessor("local[3]", "4g", "3g")) { 
-			fp.processSGMLBatchToSentences(path);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-	
 	public static void testFileCreation() throws IOException {
 		File f = new File("data/reuters/test.txt");
 		f.createNewFile();
@@ -74,10 +61,10 @@ public class Tests {
 	
 	public static void testRDDOnlyProcessing(String path) throws IOException {
 		String word = "large";
-		try (JavaSparkContext jsc= Spark.newClient(
+		try (JavaSparkContext jsc = new JavaSparkContext(Spark.newSparkConf(
 				"local[3]", 
 				setting("spark.driver.memory", "4g"),
-				setting("spark.executor.memory", "3g"))) {
+				setting("spark.executor.memory", "3g")))) {
 			print("SparkContext initialized.");
 			WordLexicon lexicon = new WordLexicon(jsc, "test");
 			print("Clearing database 'test'...");
@@ -96,11 +83,11 @@ public class Tests {
 	}
 	
 	public static void testHBaseTableCreation() throws IOException {
-		try (Client client = Spark.newClient(
+		try (JavaSparkContext jsc = new JavaSparkContext(Spark.newSparkConf(
 				"local[3]",
 				setting("spark.driver.memory", "4g"),
-				setting("spark.executor.memory", "3g"))) {
-			WordLexicon lexicon = client.openWordLexicon("otherTest");		
+				setting("spark.executor.memory", "3g")))) {
+			WordLexicon lexicon = Spark.openWordLexicon(jsc, "otherTest");		
 		}
 	}
 	

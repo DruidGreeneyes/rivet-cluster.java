@@ -24,25 +24,26 @@ public class FileProcessor implements Closeable {
 	
 	private final JavaSparkContext jsc;
 	
-	public FileProcessor (final String master, final String hostRam, final String workerRam) {
-		this.jsc = 
-				new JavaSparkContext(
-						new SparkConf()
-							.setAppName("Rivet")
-							.setMaster(master)
-							.set("spark.driver.memory", hostRam)
-							.set("spark.executor.memory", workerRam));
-	}
+	public FileProcessor (JavaSparkContext jsc) { this.jsc = jsc; }
+	public FileProcessor (SparkConf conf) { this(new JavaSparkContext(conf)); }
 	
 	public void processFileBatch (
 			Function<PortableDataStream, String> fun,
 			JavaPairRDD<String, PortableDataStream> files) {
+		files = files.mapToPair(
+				(entry) -> new Tuple2<String, PortableDataStream>(
+						entry._1.replace("file:", ""),
+						entry._2));
+		String s = files.first()._1;
+		String d = s.substring(0, s.lastIndexOf("/")) + "/processed/";
+		log.log(d);
+		new File(d).mkdirs();
 		files.mapValues(fun)
-			.foreach(
-					(entry) -> {
-						File f = new File(entry._1.replace("file:", "") + ".processed.txt");
+			.foreach((entry) -> {
+						String path = entry._1;
+						String filename = path.substring(path.lastIndexOf("/") + 1, path.length());
+						File f = new File(d + filename);						
 						try {
-							log.log(f.getAbsolutePath());
 							f.createNewFile();
 							FileWriter fw = new FileWriter(f);
 							fw.write(entry._2);
@@ -92,13 +93,28 @@ public class FileProcessor implements Closeable {
 						.filter(oneWordLine)
 						.collect(Collectors.joining("\n"));
 		} catch (IOException e) {
-			e.printStackTrace();
+			e.printStackTrace(); 
 			return "ERROR!";
 		}
 	}
 	
 	public void processSGMLBatchToSentences (String path) throws IOException {
 		this.processFileBatch(FileProcessor::processSGMLToSentences, path);
+	}
+	
+	public String uiProcess (String path) {
+		File f = new File(path);
+		JavaPairRDD<String, PortableDataStream> files = this.jsc.binaryFiles("file://" + f.getAbsolutePath());
+		long count = files.count();
+		if (files.first()._1.endsWith(".sgm") || files.first()._1.endsWith(".sgml"))
+			processFileBatch(
+					FileProcessor::processSGMLToSentences,
+					files);
+		else
+			processFileBatch(
+					FileProcessor::processToSentences,
+					files);
+		return String.format("Processing complete: %s files processed", count);
 	}
 	
 	@Override

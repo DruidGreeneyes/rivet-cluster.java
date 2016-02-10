@@ -3,7 +3,6 @@ package rivet.program;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -12,15 +11,10 @@ import org.apache.commons.lang3.ArrayUtils;
 
 import scala.Tuple2;
 
-import static java.util.stream.Collectors.toList;
-
 public final class REPL {
 
 	public static void main(String[] args) {
-		List<Method> methodIndex = 
-				Arrays.stream(MethodIndex.class.getDeclaredMethods())
-				.filter((m) -> Modifier.isPublic(m.getModifiers()))
-				.collect(toList());
+		MethodIndex methodIndex = new MethodIndex();
 		String res;
 		if (args.length > 0) {
 			System.out.println("Attempting to evaluate single command...");
@@ -37,7 +31,7 @@ public final class REPL {
 		System.out.println(res);
 	}
 
-	private static String repl (final BufferedReader reader, final List<Method> methodIndex) {
+	private static String repl (final BufferedReader reader, final MethodIndex methodIndex) {
 		Tuple2<String, Boolean> res = falseResult("No Input");
 		do {
 			System.out.print("=> ");
@@ -52,13 +46,13 @@ public final class REPL {
 		return "wHEEEEEE!";
 	}
 	
-	private static Tuple2<String, Boolean> eval (String input, List<Method> methodIndex) {
+	private static Tuple2<String, Boolean> eval (String input, MethodIndex methodIndex) {
 		input = input.trim();
 		if (input.isEmpty()) return trueResult(input);
 		return eval(input.split(" "), methodIndex);
 	}
 	
-	private static Tuple2<String, Boolean> eval (String[] inputArr, List<Method> methodIndex) {
+	private static Tuple2<String, Boolean> eval (String[] inputArr, MethodIndex methodIndex) {
 		String cmd = inputArr[0];
 		String[] args = ArrayUtils.subarray(inputArr, 1, inputArr.length);
 		switch (cmd) {
@@ -70,17 +64,15 @@ public final class REPL {
 		}
 	}
 	
-	private static Tuple2<String, Boolean> execute (String cmd, Object[] args, List<Method> methodIndex) {
+	private static Tuple2<String, Boolean> execute (String cmd, Object[] args, MethodIndex methodIndex) {
 		System.out.println("Attempting to evaluate statement...");
-		List<Method> possibles = methodIndex.stream()
+		List<Method> possibles = methodIndex.methods.stream()
 				.filter((m) -> m.getName().equalsIgnoreCase(cmd))
 				.collect(Collectors.toList());
 		if (possibles.size() < 1) 
 			return trueResult(String.format("Command '%s' not found.", cmd));
 		
 		int exp = args.length;
-		
-		possibles.forEach((m) -> System.out.println(m.getParameters().length));
 		
 		possibles.removeIf((m) -> m.getParameters().length != exp);
 		if (possibles.size() < 1)
@@ -91,7 +83,7 @@ public final class REPL {
 		Method method = possibles.get(0);
 		Object res;
 		try {
-			res = method.invoke(null, args);
+			res = method.invoke(methodIndex, args);
 		} catch (Throwable e) {
 			e.printStackTrace();
 			return falseResult(e.getMessage());
@@ -99,9 +91,9 @@ public final class REPL {
 		return trueResult(res.toString());
 	}
 	
-	private static String printMethods(List<Method> methodIndex) {
+	private static String printMethods(MethodIndex methodIndex) {
 		StringBuilder s = new StringBuilder();
-		methodIndex.forEach((m) -> {
+		methodIndex.methods.forEach((m) -> {
 			s.append(m.getName());
 			s.append(": ");
 			Arrays.stream(m.getParameters())

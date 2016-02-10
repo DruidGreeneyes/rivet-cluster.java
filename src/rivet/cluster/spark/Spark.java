@@ -1,7 +1,8 @@
 package rivet.cluster.spark;
 
-import static java.util.Arrays.stream;
-
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -20,14 +21,31 @@ import scala.Tuple2;
 
 public class Spark {
 	
-	
-	@SafeVarargs
-	public static Client newClient(final String master, Tuple2<String, String>...settings) {
-		final SparkConf sparkConf = new SparkConf()
-				.setAppName("Rivet")
+	public static SparkConf newSparkConf() {return new SparkConf().setAppName("Rivet");}
+	public static SparkConf newSparkConf(final String master, List<Setting> settings) {
+		final SparkConf sparkConf = newSparkConf()
 				.setMaster(master);
-		stream(settings).forEach((entry) -> sparkConf.set(entry._1, entry._2));
-		return new Client(sparkConf);
+		settings.forEach((entry) -> sparkConf.set(entry._1, entry._2));
+		return sparkConf;
+	}
+	public static SparkConf newSparkConf(final String master, Setting...settings) {return newSparkConf(master, Arrays.asList(settings));}
+	public static SparkConf newSparkConf(final List<Setting> settings) {
+		Optional<Setting> hasMaster = settings.stream()
+										.filter((s) -> s._1.equals("master"))
+										.findFirst();
+		String master = (hasMaster.isPresent())
+				? settings.remove(settings.indexOf(hasMaster.get()))._2
+						: "local[*]";
+		return newSparkConf(master, settings);
+	}
+	public static SparkConf newSparkConf(Setting...settings) {return newSparkConf(Arrays.asList(settings));}
+	
+	public static WordLexicon openWordLexicon (JavaSparkContext jsc, String name) throws IOException {
+		return new WordLexicon(jsc, name);
+	}
+	
+	public static TopicLexicon openTopicLexicon (JavaSparkContext jsc, String name) throws IOException {
+		return new TopicLexicon(jsc, name);
 	}
 	
 	public static final Tuple2<Optional<?>, Optional<?>> EMPTY_ENTRY = 

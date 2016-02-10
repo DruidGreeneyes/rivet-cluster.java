@@ -15,6 +15,8 @@ import java.util.function.Function;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
+import rivet.cluster.spark.Setting;
+
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
@@ -32,8 +34,8 @@ public final class Util {
 		return Optional.ofNullable(gopt.orNull());
 	}
 	
-	public static Tuple2<String, String> setting(String key, String val) {
-		return new Tuple2<>(key, val);
+	public static Setting setting(String key, String val) {
+		return new Setting(key, val);
 	}
 	
 	public static <T> Optional<T> mergeOptions(Optional<T> optA, Optional<T> optB, BiFunction<T, T, T> mergeFunction) {

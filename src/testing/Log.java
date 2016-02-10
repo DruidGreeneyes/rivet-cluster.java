@@ -17,6 +17,7 @@ public class Log implements Closeable {
 	
 	public Log (String path) {
 		Path dest = Paths.get(path);
+		System.out.println("Log created at " + dest.toString());
 		try {
 		Files.deleteIfExists(dest);
 		Files.createFile(dest);

@@ -4,6 +4,7 @@ import static rivet.cluster.spark.Lexica.sfn;
 import static rivet.util.Util.setting;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -22,10 +23,9 @@ import rivet.core.arraylabels.Labels;
 import rivet.core.arraylabels.RIV;
 import rivet.persistence.hbase.HBase;
 import rivet.util.Util;
-import testing.Log;
+import scala.Tuple2;
 
 public abstract class Lexicon {
-	private final Log log = new Log("test/lexiconOutput.txt");
 	
 	public static final String LEX_COLUMN = "lex";
 	
@@ -44,11 +44,12 @@ public abstract class Lexicon {
 	protected Integer k;
 	
 	protected JavaPairRDD<String, Row> rdd;
-	
+	protected JavaSparkContext jsc;
 	//constructor
 	public Lexicon (final JavaSparkContext jsc, final String hbaseTableName) throws TableNotFoundException, IOException {
 		if (!HBase.tableExists(hbaseTableName)) 
 			throw new TableNotFoundException("Table not found and not created: " + hbaseTableName);
+		this.jsc = jsc;
 		this.rdd = jsc.newAPIHadoopRDD(
 				HBase.newConf(hbaseTableName),
 				TableInputFormat.class,
@@ -62,7 +63,7 @@ public abstract class Lexicon {
 	
 	////Method signatures
 	public Lexicon clear() {
-		this.rdd = this.rdd.subtractByKey(this.rdd);
+		this.rdd = jsc.parallelizePairs(new ArrayList<Tuple2<String, Row>>());
 		return this;
 	}
 	
@@ -143,5 +144,5 @@ public abstract class Lexicon {
 	}
 	
 	//Abstracts
-	public abstract String uiTrain(String path, JavaSparkContext jsc);
+	public abstract String uiTrain(String path);
 }
