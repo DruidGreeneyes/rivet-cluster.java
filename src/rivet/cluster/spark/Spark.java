@@ -47,6 +47,11 @@ public class Spark {
 	public static TopicLexicon openTopicLexicon (WordLexicon wordLexicon, String name) throws IOException {
 		return new TopicLexicon(wordLexicon, name);
 	}
+	public static TopicLexicon openTopicLexicon (JavaSparkContext jsc, String wordLexName, String topicLexName) throws IOException {
+		return openTopicLexicon(
+				openWordLexicon(jsc, wordLexName),
+				topicLexName);
+	}
 	
 	public static final Tuple2<Optional<?>, Optional<?>> EMPTY_ENTRY = 
 			new Tuple2<>(Optional.empty(), Optional.empty());

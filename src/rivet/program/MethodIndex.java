@@ -66,9 +66,9 @@ public final class MethodIndex implements Closeable{
 		try {
 			switch (type) {
 			case "word"  :
-			case "words" : lexicon = Spark.openWordLexicon(jsc, name); break;
-			//case "topic" :
-			//case "topics": lexicon = Spark.openTopicLexicon(jsc, name); break;
+			case "words" : lexicon = Spark.openWordLexicon(jsc, name + "_WORDS"); break;
+			case "topic" :
+			case "topics": lexicon = Spark.openTopicLexicon(jsc, name + "_WORDS", name + "_TOPICS"); break;
 
 			default      : throw new RuntimeException("Not an applicable lexicon data type: " + type);
 			}
