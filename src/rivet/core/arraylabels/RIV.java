@@ -217,6 +217,9 @@ public class RIV implements Serializable{
 		return this.divideBy(this.magnitude());
 	}
 	
+	public static Function<RIV, RIV> subtractor (RIV riv) {
+			return (r) -> r.subtract(riv);
+	}
 	
 	//Static methods
 	public static RIV fromString(String rivString) {

@@ -142,6 +142,7 @@ public abstract class Lexicon {
 				.reduce(Labels::addLabels)
 				.divideBy(count);
 	}
+	public static RIV getMeanVector(Lexicon lexicon) { return getMeanVector(lexicon.rdd); }
 	
 	//Abstracts
 	public abstract String uiTrain(String path);

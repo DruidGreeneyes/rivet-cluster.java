@@ -25,6 +25,15 @@ public class Labels {
 				.sum();
 	}
 	
+	public static double similarity (final RIV labelA, final RIV labelB) {
+		final RIV a = labelA.normalize();
+		final RIV b = labelB.normalize();
+		final Double mag = a.magnitude() * b.magnitude();
+		return (mag == 0)
+				? 0
+				: dotProduct(a, b) / mag;
+	}
+	
 	public static RIV addLabels(final RIV labelA, final RIV labelB) {
 		return labelA.add(labelB); }
 	

@@ -70,7 +70,7 @@ public class WordLexicon extends Lexicon {
 					.reduce(new RIV(size), Labels::addLabels));
 	}
 	
-	private static List<Tuple2<String, RIV>> breakAndGetContextRIVs (final Tuple2<String, String> textEntry, final Integer size, final Integer k, final Integer cr) throws IOException {
+	private static List<Tuple2<String, RIV>> breakAndGetContextRIVs (final Tuple2<String, String> textEntry, final Integer size, final Integer k, final Integer cr) {
 		final String text = textEntry._2;
 		final List<String> words = Arrays.asList(text.split("\\s+"));
 		final Integer count = words.size();
@@ -81,7 +81,7 @@ public class WordLexicon extends Lexicon {
 				.collect(Collectors.toList());
 	}
 	
-	public WordLexicon trainWordsFromBatch (final JavaPairRDD<String, String> tokenizedTexts) throws IOException {
+	public WordLexicon trainWordsFromBatch (final JavaPairRDD<String, String> tokenizedTexts) {
 		final Integer size = this.size;
 		final Integer k = this.k;
 		final Integer cr = this.cr;
@@ -118,7 +118,7 @@ public class WordLexicon extends Lexicon {
 						getPermutedContextRIV(sentence, index, size, k, permutations));
 	}
 	
-	private static List<Tuple2<String, RIV>> breakAndGetSentenceRIVs (final Tuple2<String, String> textEntry, final Integer size, final Integer k) throws IOException {
+	private static List<Tuple2<String, RIV>> breakAndGetSentenceRIVs (final Tuple2<String, String> textEntry, final Integer size, final Integer k) {
 		final String text = textEntry._2;
 		final List<String> sentences = Arrays.asList(text.split("\\n+"));
 		final Tuple2<int[], int[]> permutations = Labels.generatePermutations(size);
@@ -128,7 +128,7 @@ public class WordLexicon extends Lexicon {
 					.collect(Collectors.toList());
 	}
 	
-	public WordLexicon trainWordsFromSentenceBatch (final JavaPairRDD<String, String> tokenizedTexts) throws IOException {
+	public WordLexicon trainWordsFromSentenceBatch (final JavaPairRDD<String, String> tokenizedTexts) {
 		final Integer size = this.getSize();
 		final Integer k = this.getK();
 		return this.batchTrainer(
@@ -137,7 +137,7 @@ public class WordLexicon extends Lexicon {
 					breakAndGetSentenceRIVs(textEntry, size, k));
 	}
 	
-	public WordLexicon trainWordsFromSentenceFile (final JavaRDD<String> text) throws IOException {
+	public WordLexicon trainWordsFromSentenceFile (final JavaRDD<String> text) {
 		final Integer size = this.getSize();
 		final Integer k = this.getK();
 		Tuple2<int[], int[]> permutations = Labels.generatePermutations(size);
@@ -156,7 +156,7 @@ public class WordLexicon extends Lexicon {
 			long startCount = this.count();
 			try {
 				this.trainWordsFromSentenceBatch(texts);
-			} catch (IOException e) {
+			} catch (Exception e) {
 				e.printStackTrace();
 				return e.getMessage();
 			}
@@ -169,7 +169,7 @@ public class WordLexicon extends Lexicon {
 			long startCount = this.count();
 			try {
 				this.trainWordsFromSentenceFile(text);
-			} catch (IOException e) {
+			} catch (Exception e) {
 				e.printStackTrace();
 				return e.getMessage();
 			}
