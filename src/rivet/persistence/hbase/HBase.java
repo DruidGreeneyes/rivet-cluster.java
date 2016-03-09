@@ -61,8 +61,11 @@ public class HBase {
 		try (Connection conn = ConnectionFactory.createConnection()) {
 			Admin admin = conn.getAdmin();
 			TableName tn = TableName.valueOf(tableName);
+			System.out.println("Disabling table: " + tableName);
 			admin.disableTable(tn);
+			System.out.println("Deleting table: " + tableName);
 			admin.deleteTable(tn);
+			System.out.println("Creating new table: " + tableName);
 			admin.createTable(newTableDescriptor(tn));
 			return tableExists(tableName);
 		}
@@ -70,7 +73,7 @@ public class HBase {
 	
 	public static Cell newCell(ImmutableBytesWritable row, String column, String value) {
 		return CellUtil.createCell(
-				row.copyBytes(),
+				row.get(),
 				DATA_COLUMN_FAMILY,
 				stringToBytes(column),
 				System.currentTimeMillis(),
@@ -79,7 +82,12 @@ public class HBase {
 	}
 	
 	public static Put newPut(ImmutableBytesWritable key, Row row) {
-		Put put = new Put(key.copyBytes());
+		Put put;
+		try {
+			put = new Put(key.get());
+		} catch (IllegalArgumentException e) {
+			throw new IllegalArgumentException("Cannot create Put with arg: '" + key.toString() + "'");
+		}
 		row.forEach((k, v) -> {
 			try{ put.add(newCell(key, k, v)); } 
 			catch (IOException e) { e.printStackTrace(); }

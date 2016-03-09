@@ -73,7 +73,12 @@ public class Spark {
 	public static Tuple2<ImmutableBytesWritable, Put> prepareEntryForStorage(
 			Tuple2<String, Row> entry) {
 		ImmutableBytesWritable key = HBase.stringToIBW(entry._1);
-		Put val = HBase.newPut(key, entry._2);
+		Put val;
+		try {
+			val = HBase.newPut(key, entry._2);
+		} catch (IllegalArgumentException e) {
+			throw new IllegalArgumentException("Cannot prepare entry for storage: " + entry.toString());
+		}
 		return new Tuple2<>(key, val);
 	}
 	
@@ -95,6 +100,7 @@ public class Spark {
 					Labels::addLabels)
 				.orElseThrow(IndexOutOfBoundsException::new);	
 		row.put("lex", newRIV.toString());
+		if (row.size() < 1) throw new RuntimeException("MergeJoinEntry has failed! : " + row.toString());
 		return row;
 	}
 }

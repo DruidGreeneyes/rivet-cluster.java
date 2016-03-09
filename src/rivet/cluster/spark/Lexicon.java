@@ -4,7 +4,10 @@ import static rivet.cluster.spark.Lexica.sfn;
 import static rivet.util.Util.setting;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -39,7 +42,7 @@ public abstract class Lexicon {
 	public static final Integer DEFAULT_K = 48;
 	public static final Integer DEFAULT_CR = 3;
 	
-	protected final String name;
+	public final String name;
 	protected Integer size;
 	protected Integer k;
 	
@@ -70,9 +73,16 @@ public abstract class Lexicon {
 	public long count() {return this.rdd.count();}
 	
 	public Lexicon write() throws IOException {
+		List<String> hbaseQuorum;
+		try {
+			hbaseQuorum = Files.readAllLines(Paths.get("conf/hbase.zookeeper.quorum.conf"));
+		} catch (IOException e) {
+			e.printStackTrace();
+			throw new RuntimeException("Unable to load hbase.zookeeper.quorum configuration!\n" + e.getMessage());
+		}
 		Configuration conf = HBase.newConf(
 				setting(TableOutputFormat.OUTPUT_TABLE, this.name),
-				setting("hbase.zookeeper.quorum", "localhost"));
+				setting("hbase.zookeeper.quorum", hbaseQuorum.get(0)));
 		Job job = Job.getInstance(conf);
 		job.setOutputFormatClass(TableOutputFormat.class);
 		job.setOutputKeyClass(ImmutableBytesWritable.class);

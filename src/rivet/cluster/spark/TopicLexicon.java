@@ -2,6 +2,8 @@ package rivet.cluster.spark;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 
 import org.apache.spark.api.java.JavaPairRDD;
@@ -55,8 +57,9 @@ public final class TopicLexicon extends Lexicon {
 	@Override
 	public final String uiTrain(String path) {
 		File file = new File(path);
+		Instant i = Instant.now();
 		if (file.isDirectory()){
-			log.log("attempting to load filed in directory: %s", file.getAbsolutePath());
+			log.log("attempting to load files in directory: %s", file.getAbsolutePath());
 			JavaPairRDD<String, String> texts = jsc.wholeTextFiles("file://" + file.getAbsolutePath());
 			long fileCount = texts.count();
 			long startCount = this.count();
@@ -67,8 +70,8 @@ public final class TopicLexicon extends Lexicon {
 				return e.getMessage();
 			}
 			long wordsAdded = this.count() - startCount;
-			return String.format("Batch training complete. %d files processed, %d words added to lexicon.",
-									fileCount, wordsAdded);
+			return String.format("Batch training complete. %d files processed, %d topics added to lexicon.\nElapsed time: %s",
+									fileCount, wordsAdded, Duration.between(i, Instant.now()));
 		} else {
 			JavaRDD<String> text = jsc.textFile(path);
 			long lineCount = text.count();
@@ -80,8 +83,8 @@ public final class TopicLexicon extends Lexicon {
 				return e.getMessage();
 			}
 			long wordsAdded = this.count() - startCount;
-			return String.format("Batch training complete. %d lines processed, %d words added to lexicon.",
-									lineCount, wordsAdded);
+			return String.format("Batch training complete. %d lines processed, %d topics added to lexicon.\nElapsed time: %s",
+									lineCount, wordsAdded, Duration.between(i, Instant.now()));
 		}
 	}
 	

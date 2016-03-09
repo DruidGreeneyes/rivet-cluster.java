@@ -2,11 +2,14 @@ package rivet.cluster.spark;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -118,13 +121,21 @@ public class WordLexicon extends Lexicon {
 						getPermutedContextRIV(sentence, index, size, k, permutations));
 	}
 	
+	private static String[] splitAndRemoveEmpties(String str, String regex) {
+		String[] res = new String[0];
+		for (String s : str.split(regex)) 
+			if (s.length() != 0)
+				res = ArrayUtils.add(res, s);
+		return res;
+	}
+	
 	private static List<Tuple2<String, RIV>> breakAndGetSentenceRIVs (final Tuple2<String, String> textEntry, final Integer size, final Integer k) {
 		final String text = textEntry._2;
-		final List<String> sentences = Arrays.asList(text.split("\\n+"));
+		final List<String> sentences = Arrays.asList(text.split("(\\n|\\r)+"));
 		final Tuple2<int[], int[]> permutations = Labels.generatePermutations(size);
-		return sentences.parallelStream()
+		return sentences.stream()
 					.flatMap((sentence) -> 
-						getPermutedSentenceRIVs(sentence.split("\\s+"), size, k, permutations))
+						getPermutedSentenceRIVs(splitAndRemoveEmpties(sentence, "\\s+"), size, k, permutations))
 					.collect(Collectors.toList());
 	}
 	
@@ -149,8 +160,9 @@ public class WordLexicon extends Lexicon {
 	
 	public String uiTrain(String path) {
 		File file = new File(path);
+		Instant i = Instant.now();
 		if (file.isDirectory()){
-			log.log("attempting to load filed in directory: %s", file.getAbsolutePath());
+			log.log("attempting to load files in directory: %s", file.getAbsolutePath());
 			JavaPairRDD<String, String> texts = jsc.wholeTextFiles("file://" + file.getAbsolutePath());
 			long fileCount = texts.count();
 			long startCount = this.count();
@@ -161,8 +173,8 @@ public class WordLexicon extends Lexicon {
 				return e.getMessage();
 			}
 			long wordsAdded = this.count() - startCount;
-			return String.format("Batch training complete. %d files processed, %d words added to lexicon.",
-									fileCount, wordsAdded);
+			return String.format("Batch training complete. %d files processed, %d words added to lexicon.\nElapsed time: %s",
+									fileCount, wordsAdded, Duration.between(i, Instant.now()));
 		} else {
 			JavaRDD<String> text = jsc.textFile(path);
 			long lineCount = text.count();
@@ -174,8 +186,8 @@ public class WordLexicon extends Lexicon {
 				return e.getMessage();
 			}
 			long wordsAdded = this.count() - startCount;
-			return String.format("Batch training complete. %d lines processed, %d words added to lexicon.",
-									lineCount, wordsAdded);
+			return String.format("Batch training complete. %d lines processed, %d words added to lexicon.\nElapsed time: %s",
+									lineCount, wordsAdded, Duration.between(i, Instant.now()));
 		}
 	}
 }

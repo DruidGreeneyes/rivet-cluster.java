@@ -91,10 +91,25 @@ public final class MethodIndex implements Closeable{
 		}
 	}
 	
+//	public final String clear (String dataType, String lexiconName) {
+//		try {
+//			this.loadLexicon(dataType, lexiconName)
+//				.clear()
+//				.write();
+//			return Long.toString(
+//					this.loadLexicon(dataType, lexiconName)
+//						.count());
+//		}
+//		catch (Exception e) {
+//			e.printStackTrace();
+//			return e.getMessage();
+//		}
+//	}
+	
 	public final String clear (String dataType, String lexiconName) {			
 		Lexicon lexicon = this.loadLexicon(dataType, lexiconName);
 		try {
-			HBase.clearTable(lexiconName);
+			HBase.clearTable(lexicon.name);
 			return Long.toString(lexicon.count());
 		} catch (IOException e) {
 			e.printStackTrace();

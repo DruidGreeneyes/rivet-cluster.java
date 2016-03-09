@@ -5,6 +5,7 @@
 /.settings
 *.jar
 *.class
+/conf/*.conf
 /.lein-*
 /.nrepl-port
 .hgignore
@@ -16,3 +17,4 @@
 /db
 /bin
 /test
+/build

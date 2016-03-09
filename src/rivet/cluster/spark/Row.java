@@ -25,6 +25,14 @@ public class Row extends TreeMap<String, String> {
 	}
 	
 	public <T> T engage (Function<Row, T> fun) { return fun.apply(this); }
+	
+	public String toString() {
+		StringBuilder sb = new StringBuilder();
+		sb.append("(");
+		this.forEach((k, v) -> sb.append(String.format("[%s|%s]", k, v)));
+		sb.append(")");
+		return sb.toString();
+	}
 
 	/**
 	 * 

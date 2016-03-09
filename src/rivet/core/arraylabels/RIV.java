@@ -228,7 +228,8 @@ public class RIV implements Serializable{
 		int size = Integer.parseInt(r[l]);
 		VectorElement[] elts = new VectorElement[0];
 		for (String s : r)
-			ArrayUtils.add(elts, VectorElement.fromString(s));
+			if (s.contains("(") && s.contains("|") && s.contains(")"))
+				ArrayUtils.add(elts, VectorElement.fromString(s));
 		return new RIV(elts, size);
 	}
 }

@@ -1,9 +1,10 @@
-package rivet.core.arraylabels;
+ package rivet.core.arraylabels;
 
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public class VectorElement implements Comparable<VectorElement> {
+	
 	//Values
 	private final int index;
 	private final double value;

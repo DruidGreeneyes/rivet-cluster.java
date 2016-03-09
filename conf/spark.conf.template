@@ -1,0 +1,3 @@
+# Configuration options when opening SparkContext objects within program. 
+
+master                        : spark://[master-url]:7077

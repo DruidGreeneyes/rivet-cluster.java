@@ -1,17 +1,20 @@
 #!/bin/bash
-if [[ $RIVET_LAST_PACKAGE_TIME && ${RIVET_LAST_PACKAGE_TIME-_} ]]; then
-  last=$RIVET_LAST_PACKAGE_TIME
+if [ -f test/last-package-time ]; then
+  while read line
+  do
+    last=line
+  done < test/last-package-time
 else
   echo "no previous package time data!"
-  last=$(date +%s)
+  last=0
 fi
   
 opts=""
-if [ -f submit.conf ]; then
+if [ -f conf/submit.conf ]; then
   while read line
   do
    opts="$opts $line"
-  done < submit.conf
+  done < conf/submit.conf
 fi
 
 latest=$(find . -type f | xargs ls -tr | tail -n 1)
@@ -26,9 +29,8 @@ if (( $last < $latest )); then
   last=$(date +%s)
 fi
 
-export RIVET_LAST_PACKAGE_TIME=$last
+echo $last > test/last-package-time
 
-export HADOOP_CONF_DIR=/home/josh/.hadoop/etc/hadoop
 echo "press enter to run spark-submit with opts=$opts"
 read -s
 spark-submit $opts target/rivet.java-0.0.1-SNAPSHOT.jar $@

@@ -8,7 +8,6 @@ import java.time.Instant;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 
-import rivet.cluster.spark.FileProcessor;
 import rivet.cluster.spark.Spark;
 import rivet.cluster.spark.WordLexicon;
 import rivet.core.arraylabels.Labels;
@@ -27,6 +26,7 @@ public class Tests {
 		String[] a = new String[]{"train", "words", "test", "data/reuters"};
 		testRepl(a);
 		log.log("Test Completed in %s", Util.timeSince(t));
+		
 	}
 	
 	public static void testRepl(String[] args) {
