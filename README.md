@@ -41,7 +41,7 @@ If you know the command you want, you can run it and automatically exit the repl
 
 It's not really complete. Currently you can do two things with it; you can train a lexicon of words against a collection of text (a directory full of text files, not .doc files or .pdfs or any of that crap. .txt or fail.), and if you have a trained lexicon of words you can build a lexicon of topics by training it against a collection of .txt documents formatted as follows:
 
-[begin text document]
+```
 topic1
 topic2
 topic3
@@ -50,5 +50,6 @@ topicN
 -==-
 text of document
 [end text document]
+```
 
-Given trained lexica of words or topics, I have written methods to compare two words or two documents and come up with contextual similarity value, or grab the ten most likely topics for some new document. But none of those are tied into the repl yet. It's a work in progress.
+Using this at the scale for which it is intended will require a full-scale, hbase-backed spark cluster, but I have not yet managed to get one running on aws, so I have not been able to do any tests against sizeable datasets.
