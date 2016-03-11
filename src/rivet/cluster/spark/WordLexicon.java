@@ -190,4 +190,10 @@ public class WordLexicon extends Lexicon {
 									lineCount, wordsAdded, Duration.between(i, Instant.now()));
 		}
 	}
+	
+	public double compareWords (String wordA, String wordB) {
+		return Labels.similarity(
+				this.getLexOrError(wordA),
+				this.getLexOrError(wordB));
+	}
 }

@@ -40,6 +40,15 @@ public class Lexica {
 				.reduce(Labels::addLabels);
 	}
 	
+	public static final double compareDocuments (
+			final WordLexicon wordLexicon,
+			final JavaRDD<String> docA,
+			final JavaRDD<String> docB) {
+		final RIV rivA = lexDocument(docA, wordLexicon);
+		final RIV rivB = lexDocument(docB, wordLexicon);
+		return Labels.similarity(rivA, rivB);
+	}
+	
 	public static final JavaPairRDD<String, RIV> lexDocuments (
 			final JavaPairRDD<String, String> documents,
 			final WordLexicon wordLexicon) {

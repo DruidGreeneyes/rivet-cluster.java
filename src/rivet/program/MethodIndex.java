@@ -12,12 +12,16 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 
 import rivet.cluster.spark.FileProcessor;
+import rivet.cluster.spark.Lexica;
 import rivet.cluster.spark.Lexicon;
 import rivet.cluster.spark.Setting;
 import rivet.cluster.spark.Spark;
+import rivet.cluster.spark.TopicLexicon;
+import rivet.cluster.spark.WordLexicon;
 import rivet.persistence.hbase.HBase;
 
 public final class MethodIndex implements Closeable{
@@ -63,20 +67,32 @@ public final class MethodIndex implements Closeable{
 	
 	private final Lexicon loadLexicon(String type, String name) {
 		Lexicon lexicon;
-		try {
-			switch (type) {
+		switch (type) {
 			case "word"  :
-			case "words" : lexicon = Spark.openWordLexicon(jsc, name + "_WORDS"); break;
+			case "words" : lexicon = loadWordLexicon(name); break;
 			case "topic" :
-			case "topics": lexicon = Spark.openTopicLexicon(jsc, name + "_WORDS", name + "_TOPICS"); break;
-
+			case "topics": lexicon = loadTopicLexicon(name); break;
 			default      : throw new RuntimeException("Not an applicable lexicon data type: " + type);
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-			throw new RuntimeException("Unable to load Lexicon!" + e.getMessage());
 		}
 		return lexicon;
+	}
+	
+	private final WordLexicon loadWordLexicon (String name) {
+		try {
+			return Spark.openWordLexicon(jsc, name + "_WORDS");
+		} catch (IOException e) {
+			e.printStackTrace();
+			throw new RuntimeException("Unable to load Lexicon!\n" + e.getMessage());
+		}
+	}
+	
+	private final TopicLexicon loadTopicLexicon (String name) {
+		try {
+			return Spark.openTopicLexicon(jsc, name + "_WORDS", name + "_TOPICS");
+		} catch (IOException e) {
+			e.printStackTrace();
+			throw new RuntimeException("Unable to load Lexicon!\n" + e.getMessage());
+		}
 	}
 	
 	public final String train (String dataType, String lexiconName, String path) {
@@ -91,20 +107,27 @@ public final class MethodIndex implements Closeable{
 		}
 	}
 	
-//	public final String clear (String dataType, String lexiconName) {
-//		try {
-//			this.loadLexicon(dataType, lexiconName)
-//				.clear()
-//				.write();
-//			return Long.toString(
-//					this.loadLexicon(dataType, lexiconName)
-//						.count());
-//		}
-//		catch (Exception e) {
-//			e.printStackTrace();
-//			return e.getMessage();
-//		}
-//	}
+	public final String compareWords (String lexiconName, String wordA, String wordB) {
+		WordLexicon lexicon = this.loadWordLexicon(lexiconName);
+		try {
+			return Double.toString(lexicon.compareWords(wordA, wordB));
+		} catch (Exception e) {
+			return e.getMessage();
+		}
+	}
+	
+	public final String compareDocuments (String lexiconName, String pathA, String pathB) {
+		WordLexicon lexicon = this.loadWordLexicon(lexiconName);
+		JavaRDD<String> docA = jsc.textFile(pathA);
+		JavaRDD<String> docB = jsc.textFile(pathB);
+		return Double.toString(Lexica.compareDocuments(lexicon, docA, docB));
+	}
+	
+	public final String assignTopicsToText (String lexiconName, String path) {
+		TopicLexicon lexicon = this.loadTopicLexicon(lexiconName);
+		JavaRDD<String> doc = jsc.textFile(path);
+		return String.join("\n", Lexica.assignTopicsToDocument(doc, lexicon));
+	}
 	
 	public final String clear (String dataType, String lexiconName) {			
 		Lexicon lexicon = this.loadLexicon(dataType, lexiconName);

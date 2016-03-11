@@ -137,6 +137,11 @@ public abstract class Lexicon {
 				.orElse(this.getInd(key));
 	}
 	
+	public RIV getLexOrError (final String key) {
+		return this.getLex(key)
+				.orElseThrow(() -> new IllegalArgumentException("Lexicon " + this.name + "contains no data for the supplied key: " + key));
+	}
+	
 	public RIV getMeanVector() {
 		return getMeanVector(this.rdd);
 	}
