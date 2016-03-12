@@ -5,6 +5,7 @@
 /.settings
 *.jar
 *.class
+/conf/spark.conf
 /conf/*.conf
 /.lein-*
 /.nrepl-port
@@ -18,3 +19,4 @@
 /bin
 /test
 /build
+package.log.txt
