@@ -13,7 +13,10 @@ opts=""
 if [ -f conf/submit.conf ]; then
   while read line
   do
-   opts="$opts $line"
+    if [[ "$line" =~ ^# ]]; then
+    else
+     opts="$opts $line"
+    fi
   done < conf/submit.conf
 fi
 

@@ -1,5 +1,4 @@
 # Commandline arguments to spark-submit. Use this to declare master url and other spark-submit options
 # as denoted at https://spark.apache.org/docs/latest/submitting-applications.html
-
 --master spark://[master-url]:7077
 --deploy-mode client

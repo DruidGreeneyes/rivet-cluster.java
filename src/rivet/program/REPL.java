@@ -14,21 +14,22 @@ import scala.Tuple2;
 public final class REPL {
 
 	public static void main(String[] args) {
-		MethodIndex methodIndex = new MethodIndex();
-		String res;
-		if (args.length > 0) {
-			System.out.println("Attempting to evaluate single command...");
-			res = eval(args, methodIndex)._1;
-		} else {
-			try (BufferedReader input = new BufferedReader(System.console().reader())) {
-				System.out.println("Entering interactive environment...");
-				res = repl(input, methodIndex);
-			} catch (IOException e) {
-				e.printStackTrace();
-				res = "ERROR!";
-			} 
+		try (MethodIndex methodIndex = new MethodIndex()) {
+			String res;
+			if (args.length > 0) {
+				System.out.println("Attempting to evaluate single command...");
+				res = eval(args, methodIndex)._1;
+			} else {
+				try (BufferedReader input = new BufferedReader(System.console().reader())) {
+					System.out.println("Entering interactive environment...");
+					res = repl(input, methodIndex);
+				} catch (IOException e) {
+					e.printStackTrace();
+					res = "ERROR!";
+				} 
+			}
+			System.out.println(res);
 		}
-		System.out.println(res);
 	}
 
 	private static String repl (final BufferedReader reader, final MethodIndex methodIndex) {
