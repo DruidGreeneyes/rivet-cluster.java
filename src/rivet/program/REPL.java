@@ -86,6 +86,7 @@ public final class REPL {
 		try {
 			res = method.invoke(methodIndex, args);
 		} catch (Throwable e) {
+			System.out.println(String.format("Unable to invoke method: %s with args: %s", method.getName(), ArrayUtils.toString(args)));
 			e.printStackTrace();
 			return falseResult(e.getMessage());
 		}
