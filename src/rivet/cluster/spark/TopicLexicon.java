@@ -16,7 +16,7 @@ import scala.Tuple2;
 import testing.Log;
 
 public final class TopicLexicon extends Lexicon {
-	Log log = new Log("test/topicLexiconOutput.txt");
+	//Log log = new Log("test/topicLexiconOutput.txt");
 	private static final String CATBREAK= "-==-";
 	
 	public final WordLexicon wordLexicon;
@@ -59,7 +59,7 @@ public final class TopicLexicon extends Lexicon {
 		File file = new File(path);
 		Instant i = Instant.now();
 		if (file.isDirectory()){
-			log.log("attempting to load files in directory: %s", file.getAbsolutePath());
+			//log.log("attempting to load files in directory: %s", file.getAbsolutePath());
 			JavaPairRDD<String, String> texts = jsc.wholeTextFiles("file://" + file.getAbsolutePath());
 			long fileCount = texts.count();
 			long startCount = this.count();

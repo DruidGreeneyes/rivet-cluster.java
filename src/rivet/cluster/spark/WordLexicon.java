@@ -23,7 +23,7 @@ import testing.Log;
 
 
 public class WordLexicon extends Lexicon {
-	private Log log = new Log("test/wordLexiconOutput");
+	//private Log log = new Log("test/wordLexiconOutput");
 
 	private Integer cr;
 	
@@ -162,7 +162,7 @@ public class WordLexicon extends Lexicon {
 		File file = new File(path);
 		Instant i = Instant.now();
 		if (file.isDirectory()){
-			log.log("attempting to load files in directory: %s", file.getAbsolutePath());
+			//log.log("attempting to load files in directory: %s", file.getAbsolutePath());
 			JavaPairRDD<String, String> texts = jsc.wholeTextFiles("file://" + file.getAbsolutePath());
 			long fileCount = texts.count();
 			long startCount = this.count();

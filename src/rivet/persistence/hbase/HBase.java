@@ -33,7 +33,7 @@ import static rivet.util.Util.setting;
 
 
 public class HBase {
-	private static final Log log = new Log("test/hbaseOutput.txt");
+	//private static final Log log = new Log("test/hbaseOutput.txt");
 	public static final byte[] DATA_COLUMN_FAMILY = stringToBytes("data");
 	
 	private static HTableDescriptor newTableDescriptor(TableName name) {
@@ -57,7 +57,7 @@ public class HBase {
 	}
 	
 	public static boolean clearTable(String tableName) throws IOException {
-		log.log("Clearing table: " + tableName);
+		//log.log("Clearing table: " + tableName);
 		try (Connection conn = ConnectionFactory.createConnection()) {
 			Admin admin = conn.getAdmin();
 			TableName tn = TableName.valueOf(tableName);

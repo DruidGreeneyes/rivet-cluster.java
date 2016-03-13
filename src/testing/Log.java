@@ -12,6 +12,7 @@ import java.time.Instant;
 
 import rivet.util.Util;
 
+@Deprecated
 public class Log implements Closeable {
 	private PrintStream stream;
 	
