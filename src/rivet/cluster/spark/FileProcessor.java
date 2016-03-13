@@ -20,7 +20,7 @@ import scala.Tuple2;
 import testing.Log;
 
 public class FileProcessor implements Closeable {
-	private final static Log log = new Log("test/fileProcessorOutput.txt");
+	//private final static Log log = new Log("test/fileProcessorOutput.txt");
 	
 	private final JavaSparkContext jsc;
 	
@@ -36,7 +36,7 @@ public class FileProcessor implements Closeable {
 						entry._2));
 		String s = files.first()._1;
 		String d = s.substring(0, s.lastIndexOf("/")) + "/processed/";
-		log.log(d);
+		//log.log(d);
 		new File(d).mkdirs();
 		files.mapValues(fun)
 			.foreach((entry) -> {
