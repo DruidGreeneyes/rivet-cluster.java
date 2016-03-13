@@ -17,7 +17,7 @@ import rivet.util.Util;
 import scala.Tuple2;
 
 public class Tests {
-	public static final Log log = new Log("test/programOutput.txt");
+	//public static final Log log = new Log("test/programOutput.txt");
 	public static String conf = "conf/spark.conf";
 	public static String path = "data/reuters";
 	
@@ -25,7 +25,7 @@ public class Tests {
 		Instant t = Instant.now();
 		String[] a = new String[]{"train", "words", "test", "data/reuters"};
 		testRepl(a);
-		log.log("Test Completed in %s", Util.timeSince(t));
+		//log.log("Test Completed in %s", Util.timeSince(t));
 		
 	}
 	
@@ -92,9 +92,9 @@ public class Tests {
 	}
 	
 	public static void print (Object obj) {
-		log.log(obj);
+		//log.log(obj);
 	}
 	public static void print (String fmt, Object...args) {
-		log.log(fmt, args);
+		//log.log(fmt, args);
 	}
 }

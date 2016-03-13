@@ -26,7 +26,7 @@ import testing.Log;
 
 public final class Util {	
 	@SuppressWarnings("unused")
-	private static final Log log = new Log("test/utilOutput.txt");
+	//private static final Log log = new Log("test/utilOutput.txt");
 	
 	private Util(){}
 	
