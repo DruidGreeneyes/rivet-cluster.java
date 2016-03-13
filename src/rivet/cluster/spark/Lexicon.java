@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableNotFoundException;
@@ -75,7 +76,10 @@ public abstract class Lexicon {
 	public Lexicon write() throws IOException {
 		List<String> hbaseQuorum;
 		try {
-			hbaseQuorum = Files.readAllLines(Paths.get("conf/hbase.zookeeper.quorum.conf"));
+			hbaseQuorum = Files.readAllLines(Paths.get("conf/hbase.zookeeper.quorum.conf"))
+							.stream()
+							.filter((line) -> !line.trim().startsWith("#"))
+							.collect(Collectors.toList());
 		} catch (IOException e) {
 			e.printStackTrace();
 			throw new RuntimeException("Unable to load hbase.zookeeper.quorum configuration!\n" + e.getMessage());
