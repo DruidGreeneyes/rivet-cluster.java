@@ -146,7 +146,7 @@ public final class MethodIndex implements Closeable{
 					.count());
 	}
 	
-	public final String processDirectory (String path) {
+	public final String processDir (String path) {
 		try (FileProcessor p = new FileProcessor(this.jsc)) {
 			return p.uiProcess(path);
 		} catch (IOException e) {
