@@ -54,7 +54,7 @@ Navigate to `[hbase-folder]/conf` and edit `hbase-site.xml`. Add the following, 
 
 Edit the `regionservers` file and change `localhost` to the internal DNS name you just used above.
 
-Edit hbase-env.sh; where it says `# Configure PermSize. Only needed in JDK7. You can safely remove it for JDK8+`, comment out the next two lines. This is bash, `#` is your comment character. Where it says `# The directory where pid files are stored. /tmp by default.`, uncomment the following line and change it to something that exists. I usually use `/path/to/hbase/dir/pids` and then I go create the `pids` folder.
+Edit hbase-env.sh; where it says `# Configure PermSize. Only needed in JDK7. You can safely remove it for JDK8+`, comment out the next two lines. This is bash, `#` is your comment character.
 
 Navigate to [spark-dir]/conf and make copies of `slaves.template`, and `spark-env.sh.template`. Rename the copies so they aren't templates.
 
