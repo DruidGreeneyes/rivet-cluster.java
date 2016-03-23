@@ -58,7 +58,7 @@ Edit hbase-env.sh; where it says `# Configure PermSize. Only needed in JDK7. You
 
 Navigate to [spark-dir]/conf and make copies of `slaves.template`, and `spark-env.sh.template`. Rename the copies so they aren't templates.
 
-Edit `slaves` and make the same change you made to `regionservers`.
+Edit `slaves` and make the same change you made to `regionservers`. NOTE that if you have not attached an Elastic IP to this instance, you will have to update slaves, regionservers, and hbase-site.xml every time you start this machine, because it will have a new IP address.
 
 Edit `spark-env.sh`. Most of it is pretty self-explanatory; the only things you -need- to change if you're just following this guide are:
 
@@ -92,6 +92,8 @@ Go to your AWS EC2 management console and save this instance as an AMI. Once tha
 The master needs to be able to ssh into all of the workers, so make sure you `cat` the master's `id_rsa.pub` into the `authorized_keys` of each worker.
 
 Go back and edit those dns files from above (hbase/conf/regionservers and hbase-site.xml, spark/conf/slaves) on each worker, and make sure that each includes the entire list of private dns names for the master and all workers. Alternatively, edit each of those on the master and then copy it over to the workers. I dunno how to do this but I know it's possible and not particularly difficult. Uses `rsync` or something like that. Google it.
+
+NOTE that if you are not using Elastic IPs you will have to go through and redo the previous step every time you stop/start the cluster, because each node will have a new IP address.
 
 ####You should now have a working setup.
 
