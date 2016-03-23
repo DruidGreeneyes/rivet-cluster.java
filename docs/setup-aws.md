@@ -102,3 +102,5 @@ spark and/or hbase report problems communicating with nodes; this may manifest a
 spark and/or hbase report `connection refused (publickey)` when you try to start them: your passwordless ssh setup is wrong. Go double-check and fix it.
 
 when I run rosie.sh, I get "All masters unresponsive, giving up" or something similar: check and make sure all the ports you need are open. If you changed the default port for your master or for the workers, you'll want to update your EC2 Security Group settings accordingly.
+
+spark reports "Job hasn't accepted any resources" or something similar: your workers don't have enough memory. Give them more (you may have to change your instance type in order to do this). I think there's a better solution to this, but that's the only one I've been able to swing for sure. I'll update this when I figure out the actual fix.
