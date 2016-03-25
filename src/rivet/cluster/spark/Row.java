@@ -33,6 +33,11 @@ public class Row extends TreeMap<String, String> {
 		sb.append(")");
 		return sb.toString();
 	}
+	
+	public Row set(String key, String value) {
+		this.put(key, value);
+		return this;
+	}
 
 	/**
 	 * 

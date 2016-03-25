@@ -63,11 +63,18 @@ public class Spark {
 		return res;
 	}
 	
-	public static Tuple2<String, Row> prepareEntryForWork(
+	public static Tuple2<String, Row> prepareLexiconEntry(
 			Tuple2<ImmutableBytesWritable, Result> entry) {
-		String key = HBase.ibwToString(entry._1);
-		Row val = new Row(entry._2);
-		return new Tuple2<>(key, val);
+		return new Tuple2<>(
+				HBase.ibwToString(entry._1),
+				new Row(entry._2));
+	}
+	
+	public static Tuple2<String, String> prepareInputEntry(
+			Tuple2<ImmutableBytesWritable, Result> entry) {
+		return new Tuple2<>(
+				HBase.ibwToString(entry._1),
+				new Row(entry._2).get("text"));
 	}
 	
 	public static Tuple2<ImmutableBytesWritable, Put> prepareEntryForStorage(

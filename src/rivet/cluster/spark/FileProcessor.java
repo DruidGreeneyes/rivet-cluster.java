@@ -1,21 +1,34 @@
 package rivet.cluster.spark;
 
+import static rivet.util.Util.setting;
+
 import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.StringReader;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.List;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
+import org.apache.hadoop.hbase.mapreduce.TableOutputFormat;
+import org.apache.hadoop.mapreduce.Job;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
+import org.apache.spark.io.CompressionCodec;
+
+import rivet.persistence.hbase.HBase;
 import rivet.util.Counter;
 import scala.Tuple2;
 
@@ -28,15 +41,31 @@ public class FileProcessor implements Closeable {
 	
 	public void processFileBatch (
 			Function<String, String> fun,
-			JavaPairRDD<String, String> files) throws IOException {
-		String s = files.first()._1;
-		String[] uriAndPath = s.split("(?<!/)/(?!/)", 2);
-		String c = "/" + uriAndPath[1];
-		String d = c.substring(0, c.lastIndexOf("/")) + "/processed/";
-		FileSystem fs = FileSystem.get(jsc.hadoopConfiguration());
-		fs.initialize(URI.create(uriAndPath[0]), fs.getConf());
-		fs.mkdirs(new Path(d));
+			JavaPairRDD<String, String> files,
+			String setName) throws IOException {
+		List<String> hbaseQuorum;
+		try {
+			hbaseQuorum = Files.readAllLines(Paths.get("conf/hbase.zookeeper.quorum.conf"))
+							.stream()
+							.filter((line) -> !line.trim().startsWith("#"))
+							.collect(Collectors.toList());
+		} catch (IOException e) {
+			e.printStackTrace();
+			throw new RuntimeException("Unable to load hbase.zookeeper.quorum configuration!\n" + e.getMessage());
+		}
+		Configuration conf = HBase.newConf(
+				setting(TableOutputFormat.OUTPUT_TABLE, setName),
+				setting("hbase.zookeeper.quorum", hbaseQuorum.get(0)));
+		Job job = Job.getInstance(conf);
+		job.setOutputFormatClass(TableOutputFormat.class);
+		job.setOutputKeyClass(ImmutableBytesWritable.class);
+		job.setOutputValueClass(Put.class);
 		files.mapValues(fun)
+			.mapValues(FileProcessor::stringToRow)
+			.mapToPair(Spark::prepareEntryForStorage)
+			.saveAsNewAPIHadoopDataset(job.getConfiguration());
+		
+		/*files.mapValues(fun)
 			.foreach((entry) -> {
 						String path = entry._1;
 						String filename = path.substring(path.lastIndexOf("/") + 1, path.length());
@@ -45,12 +74,13 @@ public class FileProcessor implements Closeable {
 						try (FSDataOutputStream stream = fs.append(p)) {
 							stream.writeUTF(entry._2);
 						}
-					});
+					});*/
 	}
 	public void processFileBatch (
 			Function<String, String> fun,
-			String path) throws IOException {
-		this.processFileBatch(fun, this.jsc.wholeTextFiles(path));
+			String path,
+			String setName) throws IOException {
+		this.processFileBatch(fun, this.jsc.wholeTextFiles(path), setName);
 	}
 	
 	public static String processToSentences (String text) {
@@ -63,8 +93,8 @@ public class FileProcessor implements Closeable {
 		}
 	}
 	
-	public void processBatchToSentences (String path) throws IOException {
-		this.processFileBatch(FileProcessor::processToSentences, path);
+	public void processBatchToSentences (String path, String setName) throws IOException {
+		this.processFileBatch(FileProcessor::processToSentences, path, setName);
 	}
 	
 	public static String processSGMLToSentences (String text) {
@@ -91,11 +121,11 @@ public class FileProcessor implements Closeable {
 		}
 	}
 	
-	public void processSGMLBatchToSentences (String path) throws IOException {
-		this.processFileBatch(FileProcessor::processSGMLToSentences, path);
+	public void processSGMLBatchToSentences (String path, String setName) throws IOException {
+		this.processFileBatch(FileProcessor::processSGMLToSentences, path, setName);
 	}
 	
-	public String uiProcess (String hdfsPath) {
+	public String uiProcess (String hdfsPath, String datasetName) {
 		if (!hdfsPath.startsWith("hdfs://"))
 			return "Given path: " + hdfsPath + ".\nCannot process files outside hdfs!";
 		JavaPairRDD<String, String> files = this.jsc.wholeTextFiles(hdfsPath);
@@ -104,16 +134,22 @@ public class FileProcessor implements Closeable {
 			if (files.first()._1.endsWith(".sgm") || files.first()._1.endsWith(".sgml"))
 				processFileBatch(
 						FileProcessor::processSGMLToSentences,
-						files);
+						files,
+						datasetName);
 			else
 				processFileBatch(
 						FileProcessor::processToSentences,
-						files);
+						files,
+						datasetName);
 			return String.format("Processing complete: %s files processed", count);
 		} catch (IOException e) {
 			e.printStackTrace();
 			return e.getMessage();
 		}
+	}
+	
+	public static Row stringToRow(String s) {
+		return new Row().set("text", s);
 	}
 	
 	@Override

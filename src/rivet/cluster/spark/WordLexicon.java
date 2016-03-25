@@ -10,12 +10,16 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
+import org.apache.hadoop.hbase.mapreduce.TableInputFormat;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
 
 import rivet.core.arraylabels.RIV;
+import rivet.persistence.hbase.HBase;
 import rivet.core.arraylabels.Labels;
 import rivet.util.Util;
 import scala.Tuple2;
@@ -158,7 +162,35 @@ public class WordLexicon extends Lexicon {
 					.collect(Collectors.toList()));
 	}
 	
-	public String uiTrain(String path) {
+	public String uiTrain(String inputSetName) {
+		try {
+			if (!HBase.tableExists(inputSetName))
+				return "Could not find input set: " + inputSetName;
+		} catch (IOException e) {
+			e.printStackTrace();
+			return "Error encountered while checking table existence: " + e.getMessage();
+		}
+		Instant i = Instant.now();
+		JavaPairRDD<String, String> inputSet = jsc.newAPIHadoopRDD(
+				HBase.newConf(inputSetName),
+				TableInputFormat.class,
+				ImmutableBytesWritable.class,
+				Result.class)
+			.mapToPair(Spark::prepareInputEntry);
+		long inputCount = inputSet.count();
+		long startCount = this.count();
+		try {
+			this.trainWordsFromSentenceBatch(inputSet);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return e.getMessage();
+		}
+		long wordsAdded = this.count() - startCount;
+		return String.format("Batch training complete. %d files processed, %d words added to lexicon.\nElapsed time: %s",
+								inputCount, wordsAdded, Duration.between(i, Instant.now()));
+	}
+	
+	/*public String uiTrain(String path) {
 		File file = new File(path);
 		Instant i = Instant.now();
 		if (file.isDirectory()){
@@ -189,7 +221,7 @@ public class WordLexicon extends Lexicon {
 			return String.format("Batch training complete. %d lines processed, %d words added to lexicon.\nElapsed time: %s",
 									lineCount, wordsAdded, Duration.between(i, Instant.now()));
 		}
-	}
+	}*/
 	
 	public double compareWords (String wordA, String wordB) {
 		return Labels.similarity(

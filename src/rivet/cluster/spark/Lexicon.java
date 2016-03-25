@@ -59,7 +59,7 @@ public abstract class Lexicon {
 				TableInputFormat.class,
 				ImmutableBytesWritable.class,
 				Result.class)
-			.mapToPair(Spark::prepareEntryForWork);
+			.mapToPair(Spark::prepareLexiconEntry);
 		this.name = hbaseTableName;
 		this.size = this.getMetadata(SIZE_COLUMN).orElse(DEFAULT_SIZE);
 		this.k = this.getMetadata(K_COLUMN).orElse(DEFAULT_K);
