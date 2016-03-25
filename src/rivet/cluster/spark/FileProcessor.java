@@ -32,7 +32,7 @@ public class FileProcessor implements Closeable {
 				(entry) -> new Tuple2<String, PortableDataStream>(
 						entry._1.replace("file:", ""),
 						entry._2));
-		String s = files.first()._1;
+		String s = newFiles.first()._1;
 		String d = s.substring(0, s.lastIndexOf("/")) + "/processed/";
 		new File(d).mkdirs();
 		newFiles.mapValues(fun)
