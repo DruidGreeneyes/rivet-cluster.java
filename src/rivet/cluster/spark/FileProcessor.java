@@ -2,14 +2,16 @@ package rivet.cluster.spark;
 
 import java.io.BufferedReader;
 import java.io.Closeable;
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.StringReader;
 import java.net.URI;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -26,28 +28,28 @@ public class FileProcessor implements Closeable {
 	
 	public void processFileBatch (
 			Function<String, String> fun,
-			JavaPairRDD<String, String> files) {
+			JavaPairRDD<String, String> files) throws IOException {
 		String s = files.first()._1;
-		String d = s.substring(0, s.lastIndexOf("/")) + "/processed/";
-		new File(d).mkdirs();
+		String[] uriAndPath = s.split("(?<!/)/(?!/)", 2);
+		String c = "/" + uriAndPath[1];
+		String d = c.substring(0, c.lastIndexOf("/")) + "/processed/";
+		FileSystem fs = FileSystem.get(jsc.hadoopConfiguration());
+		fs.initialize(URI.create(uriAndPath[0]), fs.getConf());
+		fs.mkdirs(new Path(d));
 		files.mapValues(fun)
 			.foreach((entry) -> {
 						String path = entry._1;
 						String filename = path.substring(path.lastIndexOf("/") + 1, path.length());
-						File f = new File(URI.create(d + filename));						
-						try {
-							f.createNewFile();
-							FileWriter fw = new FileWriter(f);
-							fw.write(entry._2);
-							fw.close();
-						} catch (Exception e) {
-							e.printStackTrace();
+						Path p = new Path(d + filename);
+						fs.createNewFile(p);
+						try (FSDataOutputStream stream = fs.append(p)) {
+							stream.writeUTF(entry._2);
 						}
 					});
 	}
 	public void processFileBatch (
 			Function<String, String> fun,
-			String path) {
+			String path) throws IOException {
 		this.processFileBatch(fun, this.jsc.wholeTextFiles(path));
 	}
 	
@@ -61,7 +63,7 @@ public class FileProcessor implements Closeable {
 		}
 	}
 	
-	public void processBatchToSentences (String path) {
+	public void processBatchToSentences (String path) throws IOException {
 		this.processFileBatch(FileProcessor::processToSentences, path);
 	}
 	
@@ -98,15 +100,20 @@ public class FileProcessor implements Closeable {
 			return "Given path: " + hdfsPath + ".\nCannot process files outside hdfs!";
 		JavaPairRDD<String, String> files = this.jsc.wholeTextFiles(hdfsPath);
 		long count = files.count();
-		if (files.first()._1.endsWith(".sgm") || files.first()._1.endsWith(".sgml"))
-			processFileBatch(
-					FileProcessor::processSGMLToSentences,
-					files);
-		else
-			processFileBatch(
-					FileProcessor::processToSentences,
-					files);
-		return String.format("Processing complete: %s files processed", count);
+		try {
+			if (files.first()._1.endsWith(".sgm") || files.first()._1.endsWith(".sgml"))
+				processFileBatch(
+						FileProcessor::processSGMLToSentences,
+						files);
+			else
+				processFileBatch(
+						FileProcessor::processToSentences,
+						files);
+			return String.format("Processing complete: %s files processed", count);
+		} catch (IOException e) {
+			e.printStackTrace();
+			return e.getMessage();
+		}
 	}
 	
 	@Override
