@@ -19,7 +19,7 @@ if [ -f conf/submit.conf ]; then
   done < conf/submit.conf
 fi
 
-latest=$(find . -type f | xargs ls -tr | tail -n 1)
+latest=$(find ./src -type f | xargs ls -tr | tail -n 1)
 latest=$(stat --printf=%X $latest)
 
 if (( $last < $latest )); then
