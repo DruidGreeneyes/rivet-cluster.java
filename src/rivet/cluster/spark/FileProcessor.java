@@ -98,9 +98,10 @@ public class FileProcessor implements Closeable {
 		this.processFileBatch(FileProcessor::processSGMLToSentences, path);
 	}
 	
-	public String uiProcess (String path) {
-		File f = new File(path);
-		JavaPairRDD<String, String> files = this.jsc.wholeTextFiles("file://" + f.getAbsolutePath());
+	public String uiProcess (String hdfsPath) {
+		if (!hdfsPath.startsWith("hdfs://"))
+			return "Given path: " + hdfsPath + ".\nCannot process files outside hdfs!";
+		JavaPairRDD<String, String> files = this.jsc.wholeTextFiles(hdfsPath);
 		long count = files.count();
 		if (files.first()._1.endsWith(".sgm") || files.first()._1.endsWith(".sgml"))
 			processFileBatch(
