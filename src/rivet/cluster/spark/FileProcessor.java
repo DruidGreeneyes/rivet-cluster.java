@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.URI;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -28,18 +29,14 @@ public class FileProcessor implements Closeable {
 	public void processFileBatch (
 			Function<PortableDataStream, String> fun,
 			JavaPairRDD<String, PortableDataStream> files) {
-		JavaPairRDD<String, PortableDataStream> newFiles = files.mapToPair(
-				(entry) -> new Tuple2<String, PortableDataStream>(
-						entry._1.replace("file:", ""),
-						entry._2));
-		String s = newFiles.first()._1;
+		String s = files.first()._1;
 		String d = s.substring(0, s.lastIndexOf("/")) + "/processed/";
 		new File(d).mkdirs();
-		newFiles.mapValues(fun)
+		files.mapValues(fun)
 			.foreach((entry) -> {
 						String path = entry._1;
 						String filename = path.substring(path.lastIndexOf("/") + 1, path.length());
-						File f = new File(d + filename);						
+						File f = new File(URI.create(d + filename));						
 						try {
 							f.createNewFile();
 							FileWriter fw = new FileWriter(f);
