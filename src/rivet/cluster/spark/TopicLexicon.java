@@ -12,12 +12,10 @@ import org.apache.spark.api.java.JavaRDD;
 import rivet.core.arraylabels.Labels;
 import rivet.core.arraylabels.RIV;
 import rivet.util.Util;
+import rivet.util.xml.XML;
 import scala.Tuple2;
-import testing.Log;
 
 public final class TopicLexicon extends Lexicon {
-	//Log log = new Log("test/topicLexiconOutput.txt");
-	private static final String CATBREAK= "-==-";
 	
 	public final WordLexicon wordLexicon;
 	
@@ -27,8 +25,9 @@ public final class TopicLexicon extends Lexicon {
 	}
 	
 	public static final Tuple2<String, String> breakOutTopics (final Tuple2<String, String> entry) {
-		String[] breaked = entry._2.split("\\s+" + CATBREAK + "\\s+");
-		return new Tuple2<>(breaked[0], breaked[1]);
+		String topics = XML.getTagContents(entry._2, "topics");
+		String body = XML.getTagContents(entry._2, "body");
+		return new Tuple2<>(topics, body);
 	}
 	
 	public final TopicLexicon trainTopicsFromBatch (final JavaPairRDD<String, String> texts) {

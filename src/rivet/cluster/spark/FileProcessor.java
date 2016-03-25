@@ -17,10 +17,8 @@ import org.apache.spark.input.PortableDataStream;
 
 import rivet.util.Counter;
 import scala.Tuple2;
-import testing.Log;
 
 public class FileProcessor implements Closeable {
-	//private final static Log log = new Log("test/fileProcessorOutput.txt");
 	
 	private final JavaSparkContext jsc;
 	
@@ -30,15 +28,14 @@ public class FileProcessor implements Closeable {
 	public void processFileBatch (
 			Function<PortableDataStream, String> fun,
 			JavaPairRDD<String, PortableDataStream> files) {
-		files = files.mapToPair(
+		JavaPairRDD<String, PortableDataStream> newFiles = files.mapToPair(
 				(entry) -> new Tuple2<String, PortableDataStream>(
 						entry._1.replace("file:", ""),
 						entry._2));
 		String s = files.first()._1;
 		String d = s.substring(0, s.lastIndexOf("/")) + "/processed/";
-		//log.log(d);
 		new File(d).mkdirs();
-		files.mapValues(fun)
+		newFiles.mapValues(fun)
 			.foreach((entry) -> {
 						String path = entry._1;
 						String filename = path.substring(path.lastIndexOf("/") + 1, path.length());
