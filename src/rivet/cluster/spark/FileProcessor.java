@@ -5,7 +5,6 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.net.URI;
 import java.util.function.Predicate;
@@ -15,8 +14,6 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
-import org.apache.spark.input.PortableDataStream;
-
 import rivet.util.Counter;
 import scala.Tuple2;
 
@@ -34,8 +31,6 @@ public class FileProcessor implements Closeable {
 		String d = s.substring(0, s.lastIndexOf("/")) + "/processed/";
 		new File(d).mkdirs();
 		files.mapValues(fun)
-			.saveAsTextFile(d);
-		/*files.mapValues(fun)
 			.foreach((entry) -> {
 						String path = entry._1;
 						String filename = path.substring(path.lastIndexOf("/") + 1, path.length());
@@ -48,7 +43,7 @@ public class FileProcessor implements Closeable {
 						} catch (Exception e) {
 							e.printStackTrace();
 						}
-					});*/
+					});
 	}
 	public void processFileBatch (
 			Function<String, String> fun,
