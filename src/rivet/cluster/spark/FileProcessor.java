@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.net.URI;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -27,12 +28,14 @@ public class FileProcessor implements Closeable {
 	public FileProcessor (SparkConf conf) { this(new JavaSparkContext(conf)); }
 	
 	public void processFileBatch (
-			Function<PortableDataStream, String> fun,
-			JavaPairRDD<String, PortableDataStream> files) {
+			Function<String, String> fun,
+			JavaPairRDD<String, String> files) {
 		String s = files.first()._1;
 		String d = s.substring(0, s.lastIndexOf("/")) + "/processed/";
 		new File(d).mkdirs();
 		files.mapValues(fun)
+			.saveAsTextFile(d);
+		/*files.mapValues(fun)
 			.foreach((entry) -> {
 						String path = entry._1;
 						String filename = path.substring(path.lastIndexOf("/") + 1, path.length());
@@ -45,17 +48,16 @@ public class FileProcessor implements Closeable {
 						} catch (Exception e) {
 							e.printStackTrace();
 						}
-					});
+					});*/
 	}
 	public void processFileBatch (
-			Function<PortableDataStream, String> fun,
+			Function<String, String> fun,
 			String path) {
-		this.processFileBatch(fun, this.jsc.binaryFiles(path));
+		this.processFileBatch(fun, this.jsc.wholeTextFiles(path));
 	}
 	
-	public static String processToSentences (PortableDataStream text) {
-		try (InputStreamReader isr = new InputStreamReader(text.open());
-				BufferedReader br = new BufferedReader(isr)) {
+	public static String processToSentences (String text) {
+		try (BufferedReader br = new BufferedReader(new StringReader(text))) {
 			return br.lines()
 					.collect(Collectors.joining(" "));
 		} catch (IOException e) {
@@ -68,8 +70,8 @@ public class FileProcessor implements Closeable {
 		this.processFileBatch(FileProcessor::processToSentences, path);
 	}
 	
-	public static String processSGMLToSentences (PortableDataStream text) {
-		try (BufferedReader br = new BufferedReader(new InputStreamReader(text.open()))) {
+	public static String processSGMLToSentences (String text) {
+		try (BufferedReader br = new BufferedReader (new StringReader(text))) {
 			Counter c = new Counter();
 			Pattern bodyBlocks = Pattern.compile("(<BODY>)|(&#3;</BODY>)");
 			Pattern acronyms1 = Pattern.compile("(?<=[A-Z]\\.)([A-Z])\\.");
@@ -98,7 +100,7 @@ public class FileProcessor implements Closeable {
 	
 	public String uiProcess (String path) {
 		File f = new File(path);
-		JavaPairRDD<String, PortableDataStream> files = this.jsc.binaryFiles("file://" + f.getAbsolutePath());
+		JavaPairRDD<String, String> files = this.jsc.wholeTextFiles("file://" + f.getAbsolutePath());
 		long count = files.count();
 		if (files.first()._1.endsWith(".sgm") || files.first()._1.endsWith(".sgml"))
 			processFileBatch(
