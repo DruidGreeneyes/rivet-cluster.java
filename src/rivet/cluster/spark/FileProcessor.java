@@ -47,6 +47,8 @@ public class FileProcessor implements Closeable {
 			e.printStackTrace();
 			throw new RuntimeException("Unable to load hbase.zookeeper.quorum configuration!\n" + e.getMessage());
 		}
+		if (!HBase.tableExists(setName))
+			throw new RuntimeException("No table available to recieve data: " + setName);
 		Configuration conf = HBase.newConf(
 				setting(TableOutputFormat.OUTPUT_TABLE, setName),
 				setting("hbase.zookeeper.quorum", hbaseQuorum.get(0)));
