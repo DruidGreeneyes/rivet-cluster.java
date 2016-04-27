@@ -49,6 +49,18 @@ public class Lexica {
 		return Labels.similarity(rivA, rivB);
 	}
 	
+	public static final JavaPairRDD<String, List<Double>> compareDocumentBatch (
+			final WordLexicon wordLexicon,
+			final JavaPairRDD<String, String> documents) {
+		JavaPairRDD<String, RIV> rivs = lexDocuments(documents, wordLexicon);
+		List<RIV> rivList = rivs.values().collect();
+		return rivs.mapValues(
+				(r) -> rivList.stream().map(
+						(s) -> Labels.similarity(r, s))
+						.collect(Collectors.toList()));
+	}
+			
+	
 	public static final JavaPairRDD<String, RIV> lexDocuments (
 			final JavaPairRDD<String, String> documents,
 			final WordLexicon wordLexicon) {

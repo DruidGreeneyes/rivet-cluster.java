@@ -16,16 +16,18 @@ public class Labels {
 	}
 	
 	public static Stream<Tuple2<Double, Double>> getMatchingValStream (final RIV labelA, final RIV labelB) {
-		return labelA.keyStream().filter(labelB::contains).mapToObj((i) -> new Tuple2<>(labelA.get(i), labelB.get(i)));
+		return labelA.keyStream()
+				.filter(labelB::contains)
+				.mapToObj((i) -> new Tuple2<>(labelA.get(i), labelB.get(i)));
 	}
 	
 	public static double dotProduct (final RIV labelA, final RIV labelB) {
 		return getMatchingValStream(labelA, labelB)
-				.mapToDouble((vs) -> vs._1 * vs._2)
+				.mapToDouble((valPair) -> valPair._1 * valPair._2)
 				.sum();
 	}
 	
-	public static double similarity (final RIV labelA, final RIV labelB) {
+	public static Double similarity (final RIV labelA, final RIV labelB) {
 		final RIV a = labelA.normalize();
 		final RIV b = labelB.normalize();
 		final Double mag = a.magnitude() * b.magnitude();
@@ -62,6 +64,10 @@ public class Labels {
 				makeIndices(size, j, seed),
 				makeVals(j, seed),
 				size);
+	}
+	
+	public static RIV permuteLabel (final RIV label, final Tuple2<int[], int[]> permutations, final int times) {
+		return label.permute(permutations, times);
 	}
 	
 	public static Tuple2<int[], int[]> generatePermutations (int size) {

@@ -95,10 +95,10 @@ public final class MethodIndex implements Closeable{
 		}
 	}
 	
-	public final String train (String dataType, String lexiconName, String path) {
+	public final String train (String dataType, String lexiconName, String datasetName) {
 		Lexicon lexicon = this.loadLexicon(dataType, lexiconName);
 		try {
-			String res = lexicon.uiTrain(path);
+			String res = lexicon.uiTrain(datasetName);
 			lexicon.write();
 			return res;
 		} catch (IOException e) {
