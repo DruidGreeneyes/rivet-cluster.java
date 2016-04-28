@@ -13,10 +13,10 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
 
+import rivet.cluster.hbase.HBase;
+import rivet.cluster.util.Util;
 import rivet.core.arraylabels.Labels;
 import rivet.core.arraylabels.RIV;
-import rivet.persistence.hbase.HBase;
-import rivet.util.Util;
 import scala.Tuple2;
 
 public class Spark {

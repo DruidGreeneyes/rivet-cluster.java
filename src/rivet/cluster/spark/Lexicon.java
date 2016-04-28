@@ -1,7 +1,7 @@
 package rivet.cluster.spark;
 
 import static rivet.cluster.spark.Lexica.sfn;
-import static rivet.util.Util.setting;
+import static rivet.cluster.util.Util.setting;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -23,10 +23,10 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 
+import rivet.cluster.hbase.HBase;
+import rivet.cluster.util.Util;
 import rivet.core.arraylabels.Labels;
 import rivet.core.arraylabels.RIV;
-import rivet.persistence.hbase.HBase;
-import rivet.util.Util;
 import scala.Tuple2;
 
 public abstract class Lexicon {

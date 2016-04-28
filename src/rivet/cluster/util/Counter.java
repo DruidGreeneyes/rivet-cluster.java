@@ -1,4 +1,4 @@
-package rivet.util;
+package rivet.cluster.util;
 
 public class Counter {
 	private long c;

@@ -23,7 +23,7 @@ public class VectorElement implements Comparable<VectorElement> {
 	public int compareTo(VectorElement p) {	return Integer.compare(this.index, p.index); }
 	public boolean equals(VectorElement p) { return this.compareTo(p) == 0; }
 	private void assertMatch(VectorElement p) {
-		if (this.compareTo(p) != 0)
+		if (!this.equals(p))
 			throw new IndexOutOfBoundsException(
 					String.format("Point indices do not match! %s != %s",
 							this.toString(), p.toString()));
@@ -39,7 +39,7 @@ public class VectorElement implements Comparable<VectorElement> {
 	public boolean contains(double v) {return Double.compare(v, this.value) == 0;}
 	
 	//Convenience Methods
-	public <T> T engage (Function<VectorElement, T> fun) {return fun.apply(this);}
+	public <T> T engage (Function<VectorElement, T> fun) { return fun.apply(this); }
 	public <T, R> R engage (BiFunction<VectorElement, T, R> fun, T thing) { return fun.apply(this, thing); }
 	
 	

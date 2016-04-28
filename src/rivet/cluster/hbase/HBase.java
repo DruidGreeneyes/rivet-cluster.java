@@ -1,4 +1,4 @@
-package rivet.persistence.hbase;
+package rivet.cluster.hbase;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -26,14 +26,11 @@ import org.apache.hadoop.hbase.util.Bytes;
 import rivet.cluster.spark.Row;
 
 import scala.Tuple2;
-import testing.Log;
-
 import static java.util.Arrays.stream;
-import static rivet.util.Util.setting;
+import static rivet.cluster.util.Util.setting;
 
 
 public class HBase {
-	//private static final Log log = new Log("test/hbaseOutput.txt");
 	public static final byte[] DATA_COLUMN_FAMILY = stringToBytes("data");
 	
 	private static HTableDescriptor newTableDescriptor(TableName name) {

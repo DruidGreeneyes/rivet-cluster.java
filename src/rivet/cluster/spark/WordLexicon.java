@@ -1,6 +1,5 @@
 package rivet.cluster.spark;
 
-import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
@@ -19,15 +18,13 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
 
 import rivet.core.arraylabels.RIV;
-import rivet.persistence.hbase.HBase;
+import rivet.cluster.hbase.HBase;
+import rivet.cluster.util.Util;
 import rivet.core.arraylabels.Labels;
-import rivet.util.Util;
 import scala.Tuple2;
-import testing.Log;
 
 
 public class WordLexicon extends Lexicon {
-	//private Log log = new Log("test/wordLexiconOutput");
 
 	private Integer cr;
 	

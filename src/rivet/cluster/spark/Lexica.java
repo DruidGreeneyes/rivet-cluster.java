@@ -10,9 +10,9 @@ import java.util.stream.Collectors;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 
+import rivet.cluster.util.Util;
 import rivet.core.arraylabels.Labels;
 import rivet.core.arraylabels.RIV;
-import rivet.util.Util;
 import scala.Tuple2;
 
 import static rivet.cluster.spark.Lexicon.getMeanVector;

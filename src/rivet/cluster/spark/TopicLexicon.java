@@ -9,10 +9,10 @@ import java.util.Arrays;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 
+import rivet.cluster.util.Util;
 import rivet.core.arraylabels.Labels;
 import rivet.core.arraylabels.RIV;
-import rivet.util.Util;
-import rivet.util.xml.XML;
+import rivet.cluster.util.XML;
 import scala.Tuple2;
 
 public final class TopicLexicon extends Lexicon {

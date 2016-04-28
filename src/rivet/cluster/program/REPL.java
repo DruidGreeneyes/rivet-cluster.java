@@ -1,4 +1,4 @@
-package rivet.program;
+package rivet.cluster.program;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -13,7 +13,7 @@ import scala.Tuple2;
 
 public final class REPL {
 
-	public static void main(String[] args) {
+	public static void start(String[] args) {
 		try (MethodIndex methodIndex = new MethodIndex()) {
 			String res;
 			if (args.length > 0) {

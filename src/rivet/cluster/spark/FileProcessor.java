@@ -1,6 +1,6 @@
 package rivet.cluster.spark;
 
-import static rivet.util.Util.setting;
+import static rivet.cluster.util.Util.setting;
 
 import java.io.BufferedReader;
 import java.io.Closeable;
@@ -22,8 +22,9 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
-import rivet.persistence.hbase.HBase;
-import rivet.util.Counter;
+
+import rivet.cluster.hbase.HBase;
+import rivet.cluster.util.Counter;
 import scala.Tuple2;
 
 public class FileProcessor implements Closeable {

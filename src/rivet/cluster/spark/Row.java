@@ -6,7 +6,7 @@ import java.util.function.Function;
 
 import org.apache.hadoop.hbase.client.Result;
 
-import rivet.persistence.hbase.HBase;
+import rivet.cluster.hbase.HBase;
 
 public class Row extends TreeMap<String, String> {
 	public Row(){super();}

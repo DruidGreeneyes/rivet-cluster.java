@@ -1,10 +1,12 @@
 package rivet.core.arraylabels;
 
+import java.util.Arrays;
+import java.util.function.Function;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import org.apache.commons.lang.ArrayUtils;
-import rivet.util.Util;
+import rivet.core.vectorpermutations.Permutations;
+import rivet.core.util.Util;
 import scala.Tuple2;
 
 public class Labels {
@@ -16,8 +18,7 @@ public class Labels {
 	}
 	
 	public static Stream<Tuple2<Double, Double>> getMatchingValStream (final RIV labelA, final RIV labelB) {
-		return labelA.keyStream()
-				.filter(labelB::contains)
+		return getMatchingKeyStream(labelA, labelB)
 				.mapToObj((i) -> new Tuple2<>(labelA.get(i), labelB.get(i)));
 	}
 	
@@ -37,20 +38,26 @@ public class Labels {
 	}
 	
 	public static RIV addLabels(final RIV labelA, final RIV labelB) {
-		return labelA.add(labelB); }
+		return new RIV(labelA).add(labelB);
+	}
 	
-	public static double[] makeVals (final int count, long seed) {
+	public static RIV addLabels(final RIV...labels) {
+		return Arrays.stream(labels)
+					.reduce(new RIV(labels[0].size()), Labels::addLabels);
+	}
+	
+	private static double[] makeVals (final int count, long seed) {
 		double[] l = new double[count];
 		for (int i = 0; i < count; i += 2) l[i] = 1;
 		for (int i = 1; i < count; i += 2) l[i] = -1;
 		return Util.shuffleDoubleArray(l, seed);
 	}
 	
-	public static int[] makeIndices(final int size, final int count, final long seed) {
+	private static int[] makeIndices(final int size, final int count, final long seed) {
 		return Util.randInts(size, count, seed).toArray();
 	}
 	
-	public static Long makeSeed (final String word) {
+	private static Long makeSeed (final String word) {
 		return word.chars()
 				.boxed()
 				.mapToLong((x) -> x.longValue() * (10 ^ (word.indexOf(x))))
@@ -66,16 +73,15 @@ public class Labels {
 				size);
 	}
 	
-	public static RIV permuteLabel (final RIV label, final Tuple2<int[], int[]> permutations, final int times) {
+	public static Function<String, RIV> labelGenerator (final int size, final int k) {
+		return (word) -> generateLabel(size, k, word);
+	}
+	
+	public static RIV permuteLabel (final RIV label, final Permutations permutations, final int times) {
 		return label.permute(permutations, times);
 	}
 	
-	public static Tuple2<int[], int[]> generatePermutations (int size) {
-		int[] permutation = Util.randInts(size, size, 0L)
-									.toArray();
-		int[] inverse = new int[size];
-		for (int i = 0; i < size; i++)
-			inverse[i] = ArrayUtils.indexOf(permutation, i);
-		return new Tuple2<>(permutation, inverse);
+	public static Permutations generatePermutations (final int size) {
+		return Permutations.generate(size);
 	}
 }

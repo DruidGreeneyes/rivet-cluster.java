@@ -1,4 +1,4 @@
-package rivet.program;
+package rivet.cluster.program;
 
 import static java.util.stream.Collectors.toList;
 
@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 
+import rivet.cluster.hbase.HBase;
 import rivet.cluster.spark.FileProcessor;
 import rivet.cluster.spark.Lexica;
 import rivet.cluster.spark.Lexicon;
@@ -22,7 +23,6 @@ import rivet.cluster.spark.Setting;
 import rivet.cluster.spark.Spark;
 import rivet.cluster.spark.TopicLexicon;
 import rivet.cluster.spark.WordLexicon;
-import rivet.persistence.hbase.HBase;
 
 public final class MethodIndex implements Closeable{
 	private static final String SPARK_CONF = "conf/spark.conf";

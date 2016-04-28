@@ -1,4 +1,4 @@
-package rivet.util.xml;
+package rivet.cluster.util;
 
 public class XML {
 	public static String getTagContents(String text, String tag) {

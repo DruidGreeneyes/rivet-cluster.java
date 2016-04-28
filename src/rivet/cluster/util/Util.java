@@ -1,14 +1,12 @@
-package rivet.util;
+package rivet.cluster.util;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -18,15 +16,10 @@ import java.util.stream.LongStream;
 import rivet.cluster.spark.Setting;
 
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
-
 import scala.Tuple2;
-import testing.Log;
 
 
-public final class Util {	
-	@SuppressWarnings("unused")
-	//private static final Log log = new Log("test/utilOutput.txt");
+public final class Util {
 	
 	private Util(){}
 	
@@ -52,13 +45,6 @@ public final class Util {
 		} catch (IndexOutOfBoundsException e) {
 			return Optional.empty();
 		}
-	}
-	
-	public static <K, M extends Map<K, ?>> Set<K> getMatchingKeys (final M hashA, final M hashB) {
-		return hashA.keySet()
-				.parallelStream()
-				.filter((x) -> hashB.containsKey(x))
-				.collect(toSet());
 	}
 	
 	public static <T> List<T> shuffleList(final List<T> lis, final Long seed) {
