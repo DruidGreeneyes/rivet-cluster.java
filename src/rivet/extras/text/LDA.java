@@ -14,6 +14,7 @@ import static java.util.Arrays.stream;
 
 import java.util.ArrayList;
 
+
 public class LDA {
 	
 	public static HashMap<String, String[]> gibbsSample (String[][] texts, int numTopics, int changeThreshold) {
@@ -78,7 +79,7 @@ public class LDA {
 		return topics;
 	}
 	
-	public static HashMap<Double, Tuple2<String, String[]>> heirarchicalGibbsSample (String[][] texts, int numTopics, int changeThreshold) {
-		
-	}
+//	public static HashMap<Double, Tuple2<String, String[]>> heirarchicalGibbsSample (String[][] texts, int numTopics, int changeThreshold) {
+//		
+//	}
 }

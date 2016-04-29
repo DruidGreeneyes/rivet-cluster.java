@@ -34,7 +34,7 @@ public class Shingles {
 					.toArray(RIV[]::new);
 	}
 	
-	public static RIV rivShinglesAndSum (String text, int[] shinglePoints, int offset, int size, int k) {
+	public static RIV rivAndSumShingles (String text, int[] shinglePoints, int offset, int size, int k) {
 		return Arrays.stream(shinglePoints)
 			.boxed()
 			.reduce(new RIV(size),
