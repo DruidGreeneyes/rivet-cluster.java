@@ -6,6 +6,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import rivet.core.vectorpermutations.Permutations;
+import rivet.core.util.Counter;
 import rivet.core.util.Util;
 import scala.Tuple2;
 
@@ -57,20 +58,24 @@ public class Labels {
 		return Util.randInts(size, count, seed).toArray();
 	}
 	
-	private static Long makeSeed (final String word) {
+	private static Long makeSeed (final CharSequence word) {
+		Counter c = new Counter();
 		return word.chars()
 				.boxed()
-				.mapToLong((x) -> x.longValue() * (10 ^ (word.indexOf(x))))
+				.mapToLong((x) -> x.longValue() * (10 ^ c.lateInc()))
 				.sum();
 	}
 	
-	public static RIV generateLabel (final int size, final int k, final String word) {
+	public static RIV generateLabel (final int size, final int k, final CharSequence word) {
 		final long seed = makeSeed(word);
 		final int j = (k % 2 == 0) ? k : k + 1;
 		return new RIV(
 				makeIndices(size, j, seed),
 				makeVals(j, seed),
 				size);
+	}
+	public static RIV generateLabel (final int size, final int k, final CharSequence source, final int startIndex, final int tokenLength) {
+		return generateLabel(size, k, source.subSequence(startIndex, startIndex + tokenLength));
 	}
 	
 	public static Function<String, RIV> labelGenerator (final int size, final int k) {

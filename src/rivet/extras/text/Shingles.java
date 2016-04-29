@@ -2,11 +2,18 @@ package rivet.extras.text;
 
 import static java.util.Arrays.stream;
 
+import java.util.Arrays;
+
 import org.apache.commons.lang3.ArrayUtils;
 
+import rivet.cluster.util.Util;
 import rivet.core.arraylabels.*;
 
 public class Shingles {
+	
+	public static int[] findShinglePoints (String text, int width, int offset) {
+		return Util.range(0, text.length(), offset).toArray();
+	}
 	
 	public static String[] shingleText(String text, int width, int offset) {
 		String[] res = new String[0];
@@ -19,6 +26,20 @@ public class Shingles {
 		return stream(shingles)
 			.map(Labels.labelGenerator(size, k))
 			.toArray(RIV[]::new);
+	}
+	
+	public static RIV[] rivShingles (String text, int[] shinglePoints, int offset, int size, int k) {
+		return Arrays.stream(shinglePoints)
+					.mapToObj((point) -> Labels.generateLabel(size, k, text, point, offset))
+					.toArray(RIV[]::new);
+	}
+	
+	public static RIV rivShinglesAndSum (String text, int[] shinglePoints, int offset, int size, int k) {
+		return Arrays.stream(shinglePoints)
+			.boxed()
+			.reduce(new RIV(size),
+					(riv, point) -> riv.add(Labels.generateLabel(size, k, text, point, offset)),
+					(rivA, rivB) -> Labels.addLabels(rivA, rivB));
 	}
 	
 	public static RIV sumRIVs (RIV[] rivs) { return Labels.addLabels(rivs); }
