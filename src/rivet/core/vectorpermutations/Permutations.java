@@ -1,6 +1,6 @@
 package rivet.core.vectorpermutations;
 
-import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.ArrayUtils;
 
 import scala.Tuple2;
 

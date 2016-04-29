@@ -35,10 +35,19 @@ public class Shingles {
 	}
 	
 	public static RIV rivAndSumShingles (String text, int[] shinglePoints, int offset, int size, int k) {
+		int length = text.length();
 		return Arrays.stream(shinglePoints)
 			.boxed()
 			.reduce(new RIV(size),
-					(riv, point) -> riv.add(Labels.generateLabel(size, k, text, point, offset)),
+					(riv, point) -> riv.add(
+							Labels.generateLabel(
+									size,
+									k,
+									text,
+									point,
+									(point + offset < length) 
+										? offset
+												: length - point)),
 					(rivA, rivB) -> Labels.addLabels(rivA, rivB));
 	}
 	
