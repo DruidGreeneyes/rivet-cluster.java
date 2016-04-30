@@ -1,7 +1,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>rivet.java</groupId>
-  <artifactId>rivet.java</artifactId>
+  <groupId>rivet</groupId>
+  <artifactId>rivet</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <packaging>jar</packaging>
   <build>
@@ -49,7 +49,19 @@
       </plugin>
     </plugins>
   </build>
+  <repositories>
+    <repository>
+        <id>jitpack.io</id>
+        <url>https://jitpack.io</url>
+    </repository>
+  </repositories>
   <dependencies>
+    <dependency>
+        <groupId>com.github.DruidGreeneyes</groupId>
+        <artifactId>rivet-core.java</artifactId>
+        <version>v0.0.1-pre-alpha</version>
+        <scope>jar</scope>
+    </dependency>
   	<dependency>
   		<groupId>org.apache.spark</groupId>
   		<artifactId>spark-core_2.10</artifactId>
@@ -67,5 +79,7 @@
   		<version>1.1.4</version>
   	</dependency>
   </dependencies>
-  
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
 </project>
