@@ -1,7 +1,7 @@
 #Rivet.java
 
-Random-Index Vectoring in Java. Written in the voice of Mister Torgue.
-This works on my laptop but should currently be treated as non-functional unless you want to dig through the source on your own and make it work for you.
+Cluster-backed Random-Index Vectoring in Java. Written in the voice of Mister Torgue.
+This works on my laptop and on AWS, but should currently be treated as non-functional unless you want to dig through the source on your own and make it work for you.
 
 ##WHAT THE F$%K IS THIS!?!?
 
@@ -29,7 +29,7 @@ Start spark by running ```sbin/start-all.sh``` in your spark home directory
 
 If you get errors in either case, go fix them. If both are running and you didn't manually change the default ports they use, you can find the spark webUI at https://localhost:8080, and you can find the hbase webUI at https://localhost:16010
 
-Once everything is running, go into the cloned rivet directory and look in the conf folder. Copy all the *.template files and remove the .template suffix from your copies. Then edit them to suit you. You can find your Master URL by looking at the main page of spark's webUI.
+Once everything is running, go into the cloned rivet directory and look in the conf folder. Copy all the *.template files and remove the .template suffix from your copies. Then edit them to suit you. You can find your Master URL by looking at the main page of spark's webUI. If you're running on AWS, keep in mind that the webUI will show the Internal DNS name, and unless you're running rivet from the master device of your cluster, you will need to use the External DNS instead.
 
 Run rivet:
 
@@ -41,15 +41,18 @@ If you know the command you want, you can run it and automatically exit the repl
 
 It's not really complete. Currently you can do two things with it; you can train a lexicon of words against a collection of text (a directory full of text files, not .doc files or .pdfs or any of that crap. .txt or fail.), and if you have a trained lexicon of words you can build a lexicon of topics by training it against a collection of .txt documents formatted as follows:
 
-```
+```xml
+<topics>
 topic1
 topic2
 topic3
 ...
 topicN
--==-
+</topics>
+...
+<body>
 text of document
-[end text document]
+</body>
 ```
 
-Using this at the scale for which it is intended will require a full-scale, hbase-backed spark cluster, but I have not yet managed to get one running on aws, so I have not been able to do any tests against sizeable datasets.
+Using this at the scale for which it is intended will require a full-scale cluster, running Hadoop HDFS, Zookeeper, HBase 1.1.4, and Spark 1.6.0.
