@@ -59,7 +59,7 @@
     <dependency>
         <groupId>com.github.DruidGreeneyes</groupId>
         <artifactId>rivet-core.java</artifactId>
-        <version>v0.0.1-pre-alpha</version>
+        <version>v0.1.0-alpha</version>
         <scope>jar</scope>
     </dependency>
   	<dependency>

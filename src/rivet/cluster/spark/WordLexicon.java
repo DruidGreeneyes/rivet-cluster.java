@@ -18,6 +18,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
 
 import rivet.core.arraylabels.RIV;
+import rivet.core.vectorpermutations.Permutations;
 import rivet.cluster.hbase.HBase;
 import rivet.cluster.util.Util;
 import rivet.core.arraylabels.Labels;
@@ -105,7 +106,7 @@ public class WordLexicon extends Lexicon {
 						sum.subtract(getInd(size, k, word))));
 	}
 	
-	private static Tuple2<String, RIV> getPermutedContextRIV (final String[] context, final Integer index, final Integer size, final Integer k, Tuple2<int[], int[]> permutations) {
+	private static Tuple2<String, RIV> getPermutedContextRIV (final String[] context, final Integer index, final Integer size, final Integer k, Permutations permutations) {
 		final Integer count = context.length;
 		final RIV riv = Util.range(count)
 					.filter((i) -> !index.equals(i))
@@ -116,7 +117,7 @@ public class WordLexicon extends Lexicon {
 		return new Tuple2<>(context[index], riv);
 	}
 	
-	private static Stream<Tuple2<String, RIV>> getPermutedSentenceRIVs (final String[] sentence, final Integer size, final Integer k, Tuple2<int[], int[]> permutations) {
+	private static Stream<Tuple2<String, RIV>> getPermutedSentenceRIVs (final String[] sentence, final Integer size, final Integer k, Permutations permutations) {
 		return Util.range(sentence.length)
 					.mapToObj((index) -> 
 						getPermutedContextRIV(sentence, index, size, k, permutations));
@@ -133,7 +134,7 @@ public class WordLexicon extends Lexicon {
 	private static List<Tuple2<String, RIV>> breakAndGetSentenceRIVs (final Tuple2<String, String> textEntry, final Integer size, final Integer k) {
 		final String text = textEntry._2;
 		final List<String> sentences = Arrays.asList(text.split("(\\n|\\r)+"));
-		final Tuple2<int[], int[]> permutations = Labels.generatePermutations(size);
+		final Permutations permutations = Labels.generatePermutations(size);
 		return sentences.stream()
 					.flatMap((sentence) -> 
 						getPermutedSentenceRIVs(splitAndRemoveEmpties(sentence, "\\s+"), size, k, permutations))
@@ -152,7 +153,7 @@ public class WordLexicon extends Lexicon {
 	public WordLexicon trainWordsFromSentenceFile (final JavaRDD<String> text) {
 		final Integer size = this.getSize();
 		final Integer k = this.getK();
-		Tuple2<int[], int[]> permutations = Labels.generatePermutations(size);
+		Permutations permutations = Labels.generatePermutations(size);
 		return this.trainer(text,
 				(line) ->
 					getPermutedSentenceRIVs(line.split("\\s+"), size, k, permutations)
