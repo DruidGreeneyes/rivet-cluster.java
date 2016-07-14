@@ -25,144 +25,162 @@ import org.apache.spark.api.java.JavaSparkContext;
 
 import rivet.cluster.hbase.HBase;
 import rivet.cluster.util.Util;
-import rivet.core.arraylabels.Labels;
-import rivet.core.arraylabels.RIV;
+import rivet.core.labels.MapRIV;
 import scala.Tuple2;
 
 public abstract class Lexicon {
-	
-	public static final String LEX_COLUMN = "lex";
-	
-	public static final String META_ROW = "metadata";
 
-	public static final String SIZE_COLUMN = "size";
-	public static final String K_COLUMN = "k";
-	public static final String CR_COLUMN = "cr";
-	
-	public static final Integer DEFAULT_SIZE = 16000;
-	public static final Integer DEFAULT_K = 48;
-	public static final Integer DEFAULT_CR = 3;
-	
-	public final String name;
-	protected Integer size;
-	protected Integer k;
-	
-	protected JavaPairRDD<String, Row> rdd;
-	protected JavaSparkContext jsc;
-	//constructor
-	public Lexicon (final JavaSparkContext jsc, final String hbaseTableName) throws TableNotFoundException, IOException {
-		if (!HBase.tableExists(hbaseTableName)) 
-			throw new TableNotFoundException("Table not found and not created: " + hbaseTableName);
-		this.jsc = jsc;
-		this.rdd = jsc.newAPIHadoopRDD(
-				HBase.newConf(hbaseTableName),
-				TableInputFormat.class,
-				ImmutableBytesWritable.class,
-				Result.class)
-			.mapToPair(Spark::prepareLexiconEntry);
-		this.name = hbaseTableName;
-		this.size = this.getMetadata(SIZE_COLUMN).orElse(DEFAULT_SIZE);
-		this.k = this.getMetadata(K_COLUMN).orElse(DEFAULT_K);
-	}
-	
-	////Method signatures
-	public Lexicon clear() {
-		this.rdd = jsc.parallelizePairs(new ArrayList<Tuple2<String, Row>>());
-		return this;
-	}
-	
-	public long count() {return this.rdd.count();}
-	
-	public Lexicon write() throws IOException {
-		List<String> hbaseQuorum;
-		try {
-			hbaseQuorum = Files.readAllLines(Paths.get("conf/hbase.zookeeper.quorum.conf"))
-							.stream()
-							.filter((line) -> !line.trim().startsWith("#"))
-							.collect(Collectors.toList());
-		} catch (IOException e) {
-			e.printStackTrace();
-			throw new RuntimeException("Unable to load hbase.zookeeper.quorum configuration!\n" + e.getMessage());
-		}
-		Configuration conf = HBase.newConf(
-				setting(TableOutputFormat.OUTPUT_TABLE, this.name),
-				setting("hbase.zookeeper.quorum", hbaseQuorum.get(0)));
-		Job job = Job.getInstance(conf);
-		job.setOutputFormatClass(TableOutputFormat.class);
-		job.setOutputKeyClass(ImmutableBytesWritable.class);
-		job.setOutputValueClass(Put.class);
-		this.rdd
-			.mapToPair(Spark::prepareEntryForStorage)
-			.saveAsNewAPIHadoopDataset(job.getConfiguration());
-		return this;
-	}
-	
-	public Integer getSize () {return this.size;}
-	public Integer getK () {return this.k;}
-	
-	public Lexicon setSize (final Integer size) {this.size = size; return this;}
-	public Lexicon setK (final Integer k) {this.k = k; return this;}
-	
-	public Optional<Row> get (String key) {
-		return Util.getOpt(this.rdd.lookup(key), 0);
-	}
-	
-	public static Function<Row, String> pointGetter(String columnKey) {
-		return (row) -> row.get(columnKey);
-	}
-	
-	public static String getPoint (Row row, String columnKey) {
-		return pointGetter(columnKey).apply(row);
-	}
-	
-	public Optional<String> getPoint (String key, String columnKey) {
-		return this.get(key).map(pointGetter(columnKey));
-	}
-	
-	public Optional<Integer> getMetadata (String item) {
-		return this.getPoint(META_ROW, item).map(Integer::parseInt);
-	}
-	
-	public static RIV getInd (final Integer size, final Integer k, final String key) {
-		return Labels.generateLabel(size, k, key);
-	}
-	public RIV getInd (final String key) {
-		return getInd(this.size, this.k, key);
-	}
-	
-	public Optional<RIV> getLex (final String key) {
-		return this.get(key)
-				.map(pointGetter(LEX_COLUMN))
-				.map(RIV::fromString);
-	}
-	
-	public RIV getOrMakeLex (final String key) {
-		return this.getLex(key)
-				.orElse(this.getInd(key));
-	}
-	
-	public RIV getLexOrError (final String key) {
-		return this.getLex(key)
-				.orElseThrow(() -> new IllegalArgumentException("Lexicon " + this.name + "contains no data for the supplied key: " + key));
-	}
-	
-	public RIV getMeanVector() {
-		return getMeanVector(this.rdd);
-	}
-	
-	//Static and random utility stuff
-	public static RIV getMeanVector(JavaPairRDD<String, Row> lexicon) {
-		final Long count = lexicon.count();
-		return lexicon
-				.values()
-				.map(sfn(pointGetter(LEX_COLUMN)))
-				.map(RIV::fromString)
-				.map(RIV::normalize)
-				.reduce(Labels::addLabels)
-				.divideBy(count);
-	}
-	public static RIV getMeanVector(Lexicon lexicon) { return getMeanVector(lexicon.rdd); }
-	
-	//Abstracts
-	public abstract String uiTrain(String path);
+    public static final String LEX_COLUMN = "lex";
+
+    public static final String META_ROW = "metadata";
+
+    public static final String SIZE_COLUMN = "size";
+    public static final String K_COLUMN = "k";
+    public static final String CR_COLUMN = "cr";
+
+    public static final Integer DEFAULT_SIZE = 16000;
+    public static final Integer DEFAULT_K = 48;
+    public static final Integer DEFAULT_CR = 3;
+
+    public static MapRIV getInd(final Integer size, final Integer k,
+            final String key) {
+        return MapRIV.generateLabel(size, k, key);
+    }
+
+    // Static and random utility stuff
+    private static MapRIV getMeanVector(final JavaPairRDD<String, Row> lexicon,
+            final int size) {
+        final Long count = lexicon.count();
+        return lexicon.values().map(sfn(pointGetter(LEX_COLUMN)))
+                .map(MapRIV::fromString).map(MapRIV::normalize)
+                .fold(new MapRIV(size), (i, r) -> i.destructiveAdd(r))
+                .divide(count);
+    }
+
+    public static MapRIV getMeanVector(final Lexicon lexicon) {
+        return getMeanVector(lexicon.rdd, lexicon.size);
+    }
+
+    public static String getPoint(final Row row, final String columnKey) {
+        return pointGetter(columnKey).apply(row);
+    }
+
+    public static Function<Row, String> pointGetter(final String columnKey) {
+        return (row) -> row.get(columnKey);
+    }
+
+    public final String name;
+
+    protected Integer size;
+
+    protected Integer k;
+
+    protected JavaPairRDD<String, Row> rdd;
+
+    protected JavaSparkContext jsc;
+
+    // constructor
+    public Lexicon(final JavaSparkContext jsc, final String hbaseTableName)
+            throws TableNotFoundException, IOException {
+        if (!HBase.tableExists(hbaseTableName))
+            throw new TableNotFoundException(
+                    "Table not found and not created: " + hbaseTableName);
+        this.jsc = jsc;
+        rdd = jsc.newAPIHadoopRDD(HBase.newConf(hbaseTableName),
+                TableInputFormat.class, ImmutableBytesWritable.class,
+                Result.class).mapToPair(Spark::prepareLexiconEntry);
+        name = hbaseTableName;
+        size = getMetadata(SIZE_COLUMN).orElse(DEFAULT_SIZE);
+        k = getMetadata(K_COLUMN).orElse(DEFAULT_K);
+    }
+
+    //// Method signatures
+    public Lexicon clear() {
+        rdd = jsc.parallelizePairs(new ArrayList<Tuple2<String, Row>>());
+        return this;
+    }
+
+    public long count() {
+        return rdd.count();
+    }
+
+    public Optional<Row> get(final String key) {
+        return Util.getOpt(rdd.lookup(key), 0);
+    }
+
+    public MapRIV getInd(final String key) {
+        return getInd(size, k, key);
+    }
+
+    public Integer getK() {
+        return k;
+    }
+
+    public Optional<MapRIV> getLex(final String key) {
+        return get(key).map(pointGetter(LEX_COLUMN)).map(MapRIV::fromString);
+    }
+
+    public MapRIV getLexOrError(final String key) {
+        return getLex(key).orElseThrow(
+                () -> new IllegalArgumentException("Lexicon " + name
+                        + "contains no data for the supplied key: " + key));
+    }
+
+    public MapRIV getMeanVector() {
+        return getMeanVector(rdd, size);
+    }
+
+    public Optional<Integer> getMetadata(final String item) {
+        return this.getPoint(META_ROW, item).map(Integer::parseInt);
+    }
+
+    public MapRIV getOrMakeLex(final String key) {
+        return getLex(key).orElse(this.getInd(key));
+    }
+
+    public Optional<String> getPoint(final String key, final String columnKey) {
+        return get(key).map(pointGetter(columnKey));
+    }
+
+    public Integer getSize() {
+        return size;
+    }
+
+    public Lexicon setK(final Integer k) {
+        this.k = k;
+        return this;
+    }
+
+    public Lexicon setSize(final Integer size) {
+        this.size = size;
+        return this;
+    }
+
+    // Abstracts
+    public abstract String uiTrain(String path);
+
+    public Lexicon write() throws IOException {
+        List<String> hbaseQuorum;
+        try {
+            hbaseQuorum = Files
+                    .readAllLines(Paths.get("conf/hbase.zookeeper.quorum.conf"))
+                    .stream().filter((line) -> !line.trim().startsWith("#"))
+                    .collect(Collectors.toList());
+        } catch (final IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException(
+                    "Unable to load hbase.zookeeper.quorum configuration!\n"
+                            + e.getMessage());
+        }
+        final Configuration conf = HBase.newConf(
+                setting(TableOutputFormat.OUTPUT_TABLE, name),
+                setting("hbase.zookeeper.quorum", hbaseQuorum.get(0)));
+        final Job job = Job.getInstance(conf);
+        job.setOutputFormatClass(TableOutputFormat.class);
+        job.setOutputKeyClass(ImmutableBytesWritable.class);
+        job.setOutputValueClass(Put.class);
+        rdd.mapToPair(Spark::prepareEntryForStorage)
+                .saveAsNewAPIHadoopDataset(job.getConfiguration());
+        return this;
+    }
 }
